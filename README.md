@@ -251,4 +251,46 @@ For issues or questions:
 3. Ensure all dependencies are installed correctly
 4. Verify database connection settings
 
+BACKEND COMPLETED
+Here are all your main API endpoints as defined in your main.py and router registrations:
 
+---
+
+## **Authentication**
+- `POST /api/auth/login` — Admin login
+- `POST /api/auth/verify` — Verify JWT token
+- `POST /api/auth/logout` — Admin logout
+
+## **Tournaments**
+- `GET /api/tournaments` — List all tournaments
+- `GET /api/tournaments/current` — Get current tournament
+- `POST /api/tournaments` — Create a tournament (Admin)
+- `PUT /api/tournaments/{id}` — Update a tournament (Admin)
+
+## **Teams**
+- `GET /api/teams` — List all teams
+- `POST /api/teams` — Create a team (Admin)
+- `PUT /api/teams/{id}` — Update a team (Admin)
+- `DELETE /api/teams/{id}` — Delete a team (Admin)
+
+## **Players**
+- `GET /api/players` — List all players
+- `GET /api/players/rankings` — Get player rankings
+- `POST /api/players` — Create a player (Admin)
+- `PUT /api/players/{id}` — Update a player (Admin)
+- `DELETE /api/players/{id}` — Delete a player (Admin)
+
+## **Matches**
+- `GET /api/matches` — List all matches
+- `GET /api/matches/schedule` — Get match schedule
+- `PUT /api/matches/{id}/result` — Update match result (Admin)
+
+## **Health & Info**
+- `GET /health` — Basic health check
+- `GET /health/detailed` — Detailed health check (includes DB)
+- `GET /` — API root info
+- `GET /api` — API info and available endpoints
+
+---
+
+If you need the request/response schemas or more details for any endpoint, let me know!
