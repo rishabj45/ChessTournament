@@ -35,7 +35,12 @@ class Team(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
     tournament = relationship("Tournament", back_populates="teams")
-    players = relationship("Player", back_populates="team", cascade="all, delete-orphan")
+    players = relationship(
+        "Player",
+        back_populates="team",
+        cascade="all, delete-orphan",
+        foreign_keys="[Player.team_id]"  # <-- Specify the foreign key here
+    )
     captain = relationship("Player", foreign_keys=[captain_id])
     home_matches = relationship("Match", foreign_keys="Match.home_team_id", back_populates="home_team")
     away_matches = relationship("Match", foreign_keys="Match.away_team_id", back_populates="away_team")
@@ -56,7 +61,11 @@ class Player(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
-    team = relationship("Team", back_populates="players", foreign_keys=[team_id])
+    team = relationship(
+        "Team",
+        back_populates="players",
+        foreign_keys=[team_id]  # <-- Specify the foreign key here
+    )
     white_games = relationship("Game", foreign_keys="Game.white_player_id", back_populates="white_player")
     black_games = relationship("Game", foreign_keys="Game.black_player_id", back_populates="black_player")
 

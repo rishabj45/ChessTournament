@@ -366,3 +366,34 @@ def get_best_players(db: Session, tournament_id: int) -> List[Dict]:
         stats['position'] = i + 1
     
     return player_stats
+
+def update_board_result(db: Session, game_id: int, result: str):
+    """
+    Update the result of a single board (game) and update player stats.
+    result should be one of: 'white_win', 'black_win', 'draw'
+    """
+    game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not game:
+        raise ValueError("Game not found")
+
+    # Set result and scores
+    game.result = result
+    game.is_completed = True
+
+    if result == 'white_win':
+        game.white_score = 1.0
+        game.black_score = 0.0
+    elif result == 'black_win':
+        game.white_score = 0.0
+        game.black_score = 1.0
+    elif result == 'draw':
+        game.white_score = 0.5
+        game.black_score = 0.5
+    else:
+        raise ValueError("Invalid result value")
+
+    # Update player stats
+    update_player_stats(db, game.white_player_id, game.white_score)
+    update_player_stats(db, game.black_player_id, game.black_score)
+
+    db.commit()

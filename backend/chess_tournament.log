@@ -1,0 +1,314 @@
+2025-06-21 11:40:22,736 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-06-21 11:40:22,738 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("tournaments")
+2025-06-21 11:40:22,738 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:40:22,741 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("teams")
+2025-06-21 11:40:22,742 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:40:22,742 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("players")
+2025-06-21 11:40:22,742 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:40:22,742 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("rounds")
+2025-06-21 11:40:22,742 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:40:22,742 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("matches")
+2025-06-21 11:40:22,742 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:40:22,742 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("games")
+2025-06-21 11:40:22,742 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:40:22,742 - sqlalchemy.engine.Engine - INFO - COMMIT
+2025-06-21 11:40:59,551 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-06-21 11:40:59,552 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("tournaments")
+2025-06-21 11:40:59,552 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:40:59,554 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("teams")
+2025-06-21 11:40:59,554 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:40:59,555 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("players")
+2025-06-21 11:40:59,555 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:40:59,556 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("rounds")
+2025-06-21 11:40:59,556 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:40:59,556 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("matches")
+2025-06-21 11:40:59,557 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:40:59,557 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("games")
+2025-06-21 11:40:59,557 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:40:59,559 - sqlalchemy.engine.Engine - INFO - COMMIT
+2025-06-21 11:45:37,566 - app.main - WARNING - HTTP Exception: 401 - Invalid password
+2025-06-21 11:45:42,759 - app.main - WARNING - HTTP Exception: 401 - Invalid password
+2025-06-21 11:47:34,151 - app.main - ERROR - Unexpected error: 'AsyncSession' object has no attribute 'query'
+Traceback (most recent call last):
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 78, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\streams\memory.py", line 98, in receive
+    return self.receive_nowait()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\streams\memory.py", line 91, in receive_nowait
+    raise EndOfStream
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 108, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\ChessTournament\backend\app\main.py", line 138, in log_requests
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 84, in call_next
+    raise app_exc
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 70, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 79, in __call__
+    raise exc
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 20, in __call__
+    raise e
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py", line 274, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\ChessTournament\backend\app\api\tournaments.py", line 14, in get_current_tournament
+    tournament = crud.get_current_tournament(db)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\ChessTournament\backend\app\crud.py", line 12, in get_current_tournament
+    return db.query(models.Tournament).filter(models.Tournament.status == "active").first()
+           ^^^^^^^^
+AttributeError: 'AsyncSession' object has no attribute 'query'
+2025-06-21 11:47:43,835 - app.main - ERROR - Unexpected error: 'AsyncSession' object has no attribute 'query'
+Traceback (most recent call last):
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 78, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\streams\memory.py", line 98, in receive
+    return self.receive_nowait()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\streams\memory.py", line 91, in receive_nowait
+    raise EndOfStream
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 108, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\ChessTournament\backend\app\main.py", line 138, in log_requests
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 84, in call_next
+    raise app_exc
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 70, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 79, in __call__
+    raise exc
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 20, in __call__
+    raise e
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py", line 274, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\ChessTournament\backend\app\api\tournaments.py", line 28, in get_tournaments
+    return crud.get_tournaments(db, skip=skip, limit=limit)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\ChessTournament\backend\app\crud.py", line 15, in get_tournaments
+    return db.query(models.Tournament).offset(skip).limit(limit).all()
+           ^^^^^^^^
+AttributeError: 'AsyncSession' object has no attribute 'query'
+2025-06-21 11:48:21,411 - app.main - ERROR - Unexpected error: 'AsyncSession' object has no attribute 'query'
+Traceback (most recent call last):
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 78, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\streams\memory.py", line 98, in receive
+    return self.receive_nowait()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\streams\memory.py", line 91, in receive_nowait
+    raise EndOfStream
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 108, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\ChessTournament\backend\app\main.py", line 138, in log_requests
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 84, in call_next
+    raise app_exc
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 70, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 79, in __call__
+    raise exc
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 20, in __call__
+    raise e
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py", line 274, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\ChessTournament\backend\app\api\teams.py", line 14, in get_teams
+    return crud.get_teams(db, tournament_id=tournament_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\ChessTournament\backend\app\crud.py", line 38, in get_teams
+    query = db.query(models.Team)
+            ^^^^^^^^
+AttributeError: 'AsyncSession' object has no attribute 'query'
+2025-06-21 11:49:04,224 - app.main - ERROR - Unexpected error: 'AsyncSession' object has no attribute 'query'
+Traceback (most recent call last):
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 78, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\streams\memory.py", line 98, in receive
+    return self.receive_nowait()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\streams\memory.py", line 91, in receive_nowait
+    raise EndOfStream
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 108, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\ChessTournament\backend\app\main.py", line 138, in log_requests
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 84, in call_next
+    raise app_exc
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 70, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 79, in __call__
+    raise exc
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 20, in __call__
+    raise e
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py", line 274, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\risha\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\ChessTournament\backend\app\api\tournaments.py", line 14, in get_current_tournament
+    tournament = crud.get_current_tournament(db)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\ChessTournament\backend\app\crud.py", line 12, in get_current_tournament
+    return db.query(models.Tournament).filter(models.Tournament.status == "active").first()
+           ^^^^^^^^
+AttributeError: 'AsyncSession' object has no attribute 'query'
+2025-06-21 11:51:00,938 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-06-21 11:51:00,938 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("tournaments")
+2025-06-21 11:51:00,939 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:51:00,939 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("teams")
+2025-06-21 11:51:00,939 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:51:00,940 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("players")
+2025-06-21 11:51:00,940 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:51:00,941 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("rounds")
+2025-06-21 11:51:00,941 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:51:00,941 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("matches")
+2025-06-21 11:51:00,942 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:51:00,942 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("games")
+2025-06-21 11:51:00,942 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 11:51:00,943 - sqlalchemy.engine.Engine - INFO - COMMIT
+2025-06-21 14:14:42,144 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-06-21 14:14:42,144 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("tournaments")
+2025-06-21 14:14:42,144 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:14:42,162 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("teams")
+2025-06-21 14:14:42,162 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:14:42,166 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("players")
+2025-06-21 14:14:42,166 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:14:42,168 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("rounds")
+2025-06-21 14:14:42,168 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:14:42,168 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("matches")
+2025-06-21 14:14:42,168 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:14:42,174 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("games")
+2025-06-21 14:14:42,178 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:14:42,182 - sqlalchemy.engine.Engine - INFO - COMMIT
+2025-06-21 14:15:28,215 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-06-21 14:15:28,217 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("tournaments")
+2025-06-21 14:15:28,217 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:15:28,221 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("teams")
+2025-06-21 14:15:28,223 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:15:28,224 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("players")
+2025-06-21 14:15:28,224 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:15:28,228 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("rounds")
+2025-06-21 14:15:28,228 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:15:28,228 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("matches")
+2025-06-21 14:15:28,228 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:15:28,233 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("games")
+2025-06-21 14:15:28,233 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:15:28,236 - sqlalchemy.engine.Engine - INFO - COMMIT
+2025-06-21 14:16:08,304 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-06-21 14:16:08,306 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("tournaments")
+2025-06-21 14:16:08,308 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:16:08,309 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("teams")
+2025-06-21 14:16:08,309 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:16:08,314 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("players")
+2025-06-21 14:16:08,316 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:16:08,318 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("rounds")
+2025-06-21 14:16:08,318 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:16:08,320 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("matches")
+2025-06-21 14:16:08,320 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:16:08,322 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("games")
+2025-06-21 14:16:08,324 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:16:08,327 - sqlalchemy.engine.Engine - INFO - COMMIT

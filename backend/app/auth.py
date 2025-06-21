@@ -85,3 +85,7 @@ async def get_optional_admin(credentials: HTTPAuthorizationCredentials = Depends
         return payload if payload.get("is_admin") else None
     except HTTPException:
         return None
+
+get_current_admin = get_admin_user
+get_current_admin_user = get_admin_user
+require_admin_mode = get_admin_user

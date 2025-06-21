@@ -64,7 +64,7 @@ class GameCreate(GameBase):
     match_id: int
 
 class GameResult(BaseModel):
-    result: str = Field(..., regex="^(white_win|black_win|draw|pending)$")
+    result: str = Field(..., pattern="^(white_win|black_win|draw|pending)$")
 
 class Game(GameBase):
     id: int
@@ -145,7 +145,7 @@ class TournamentUpdate(BaseModel):
     description: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    status: Optional[str] = Field(None, regex="^(active|completed|paused)$")
+    status: Optional[str] = Field(None, pattern="^(active|completed|paused)$")
 
 class Tournament(TournamentBase):
     id: int
@@ -193,3 +193,92 @@ class LoginResponse(BaseModel):
 
 class TokenData(BaseModel):
     is_admin: bool = False
+
+class PlayerResponse(BaseModel):
+    id: int
+    name: str
+    rating: int
+    team_id: int
+    board_order: int
+    games_played: int
+    wins: int
+    draws: int
+    losses: int
+    points: float
+
+    class Config:
+        orm_mode = True
+
+class PlayerWithStats(BaseModel):
+    id: int
+    name: str
+    rating: int
+    team_id: int
+    team_name: Optional[str]
+    tournament_id: Optional[int]
+    board_preference: Optional[int] = None
+    is_substitute: Optional[bool] = False
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+    # Statistics
+    total_games: int
+    wins: int
+    draws: int
+    losses: int
+    points: float
+    win_percentage: float
+    games_as_white: int
+    games_as_black: int
+    white_win_percentage: float
+
+    class Config:
+        orm_mode = True
+
+class PlayerRanking(BaseModel):
+    id: int
+    name: str
+    rating: int
+    team_id: int
+    team_name: Optional[str]
+    points: float
+    rank: int
+
+    class Config:
+        orm_mode = True
+
+class GameResultSubmit(BaseModel):
+    board_number: int
+    result: str  # e.g. "1-0", "0-1", "1/2-1/2"
+
+class MatchUpdate(BaseModel):
+    home_score: Optional[int] = None
+    away_score: Optional[int] = None
+    status: Optional[str] = None
+    played_date: Optional[datetime] = None
+
+class MatchResponse(BaseModel):
+    id: int
+    round_id: int
+    home_team_id: int
+    away_team_id: int
+    scheduled_date: Optional[datetime]
+    status: str
+    home_score: Optional[int]
+    away_score: Optional[int]
+
+    class Config:
+        orm_mode = True
+
+class GameResponse(BaseModel):
+    id: int
+    match_id: int
+    board_number: int
+    white_player_id: int
+    black_player_id: int
+    result: Optional[str]
+
+    class Config:
+        orm_mode = True
+
+class MatchWithGamesResponse(MatchResponse):
+    games: List[GameResponse]

@@ -1,0 +1,322 @@
+# Database Management Guide
+
+## Overview
+Your chess tournament system uses SQLite with SQLAlchemy ORM and Alembic for migrations. This guide covers all database management tasks.
+
+## Initial Setup
+
+### 1. Environment Configuration
+Create `.env` file in the backend directory:
+```env
+# Database
+DATABASE_URL=sqlite+aiosqlite:///./chess_tournament.db
+
+# Admin Authentication
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+SECRET_KEY=your-secret-key-here-change-in-production
+
+# Development
+DEBUG=True
+```
+
+### 2. Install Dependencies
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+### 3. Run Database Initialization
+```bash
+cd backend
+python init_db.py
+```
+
+This script will:
+- Create database tables
+- Add sample tournament data (6 teams, 24 players)
+- Generate round-robin schedule
+- Set up admin credentials
+
+## Database Management Commands
+
+### Alembic Migration Commands
+
+#### Initialize Alembic (Only once)
+```bash
+cd backend
+alembic init alembic
+```
+
+#### Create a New Migration
+```bash
+alembic revision --autogenerate -m "Description of changes"
+```
+
+#### Apply Migrations
+```bash
+# Apply all pending migrations
+alembic upgrade head
+
+# Apply specific migration
+alembic upgrade revision_id
+
+# Downgrade one migration
+alembic downgrade -1
+```
+
+#### Check Migration Status
+```bash
+alembic current
+alembic history --verbose
+```
+
+### Database Inspection
+
+#### SQLite CLI Access
+```bash
+sqlite3 chess_tournament.db
+
+# Common SQLite commands:
+.tables                 # List all tables
+.schema table_name      # Show table structure
+.dump                   # Export entire database
+.quit                   # Exit
+```
+
+#### Python Database Inspection
+```python
+# backend/inspect_db.py
+import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine
+from app.database import get_database_url
+
+async def inspect_database():
+    engine = create_async_engine(get_database_url())
+    async with engine.begin() as conn:
+        from sqlalchemy import text
+        
+        # Get all tables
+        result = await conn.execute(text("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name NOT LIKE 'sqlite_%'
+        """))
+        tables = result.fetchall()
+        
+        for table in tables:
+            print(f"\nTable: {table[0]}")
+            count_result = await conn.execute(text(f"SELECT COUNT(*) FROM {table[0]}"))
+            count = count_result.scalar()
+            print(f"Records: {count}")
+
+if __name__ == "__main__":
+    asyncio.run(inspect_database())
+```
+
+## Common Database Tasks
+
+### 1. Backup Database
+```bash
+# Create backup
+cp chess_tournament.db chess_tournament_backup_$(date +%Y%m%d_%H%M%S).db
+
+# Or use SQLite dump
+sqlite3 chess_tournament.db .dump > backup.sql
+```
+
+### 2. Restore Database
+```bash
+# From file copy
+cp chess_tournament_backup_20250621_120000.db chess_tournament.db
+
+# From SQL dump
+sqlite3 chess_tournament_new.db < backup.sql
+```
+
+### 3. Reset Database
+```bash
+# Using the init script
+python init_db.py  # Will prompt to reset if data exists
+
+# Or manually
+rm chess_tournament.db
+alembic upgrade head
+python init_db.py
+```
+
+### 4. Add Sample Data
+```python
+# backend/add_sample_data.py
+import asyncio
+from init_db import initialize_tournament_data
+
+async def main():
+    await initialize_tournament_data()
+    print("Sample data added successfully!")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## Database Schema Overview
+
+### Core Tables
+- **tournaments**: Main tournament information
+- **teams**: Team data (4-6 players each)
+- **players**: Individual players with ELO ratings
+- **rounds**: Tournament rounds organization
+- **matches**: Team vs team matches
+- **games**: Individual board games within matches
+
+### Key Relationships
+```
+Tournament (1) -> (N) Teams
+Team (1) -> (N) Players
+Tournament (1) -> (N) Rounds
+Round (1) -> (N) Matches  
+Match (1) -> (N) Games
+```
+
+## Production Database Management
+
+### 1. Environment Variables
+```env
+# Production settings
+DATABASE_URL=postgresql://user:password@localhost/chess_tournament
+DEBUG=False
+SECRET_KEY=strong-random-key-here
+ADMIN_USERNAME=your_admin_username
+ADMIN_PASSWORD=strong_password_here
+```
+
+### 2. PostgreSQL Migration
+If switching to PostgreSQL:
+```bash
+# Install PostgreSQL driver
+pip install asyncpg
+
+# Update DATABASE_URL in .env
+DATABASE_URL=postgresql+asyncpg://user:password@localhost/chess_tournament
+
+# Run migrations
+alembic upgrade head
+```
+
+### 3. Database Monitoring
+```python
+# backend/db_health_check.py
+import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine
+from app.database import get_database_url
+
+async def health_check():
+    try:
+        engine = create_async_engine(get_database_url())
+        async with engine.begin() as conn:
+            from sqlalchemy import text
+            await conn.execute(text("SELECT 1"))
+        print("✅ Database connection successful")
+        return True
+    except Exception as e:
+        print(f"❌ Database connection failed: {e}")
+        return False
+    finally:
+        await engine.dispose()
+
+if __name__ == "__main__":
+    asyncio.run(health_check())
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Database Locked Error
+```bash
+# Check for active connections
+lsof chess_tournament.db
+
+# Kill processes if needed
+kill -9 <process_id>
+```
+
+#### 2. Migration Conflicts
+```bash
+# Reset migrations (DANGER: loses data)
+rm alembic/versions/*.py
+alembic revision --autogenerate -m "Initial migration"
+alembic upgrade head
+```
+
+#### 3. Corrupted Database
+```bash
+# Check integrity
+sqlite3 chess_tournament.db "PRAGMA integrity_check;"
+
+# Recover if possible
+sqlite3 chess_tournament.db ".dump" | sqlite3 chess_tournament_recovered.db
+```
+
+#### 4. Performance Issues
+```sql
+-- Add indexes for better performance
+CREATE INDEX idx_players_team_id ON players(team_id);
+CREATE INDEX idx_games_match_id ON games(match_id);
+CREATE INDEX idx_matches_round_id ON matches(round_id);
+```
+
+## Development Workflow
+
+### 1. Model Changes
+1. Modify models in `app/models.py`
+2. Generate migration: `alembic revision --autogenerate -m "description"`
+3. Review migration file in `alembic/versions/`
+4. Apply migration: `alembic upgrade head`
+5. Test changes
+
+### 2. Data Changes
+1. Create data migration script
+2. Test on backup database first
+3. Apply to development database
+4. Validate results
+
+### 3. Testing Database
+```python
+# Use separate test database
+TEST_DATABASE_URL=sqlite+aiosqlite:///./test_chess_tournament.db
+```
+
+## Security Considerations
+
+### 1. Production Setup
+- Use strong passwords
+- Enable database encryption if available
+- Regular backups
+- Monitor access logs
+- Use environment variables for secrets
+
+### 2. Access Control
+- Admin authentication required for modifications
+- Read-only access for viewers
+- Rate limiting on API endpoints
+- Input validation and sanitization
+
+## Maintenance Tasks
+
+### Daily
+- Check application logs
+- Monitor database size
+- Verify backup creation
+
+### Weekly  
+- Review performance metrics
+- Check for long-running queries
+- Update dependencies if needed
+
+### Monthly
+- Full database backup
+- Clean up old logs
+- Review security settings
+- Update documentation
+
+This guide covers all essential database management tasks for your chess tournament system. Keep it handy for reference during development and production deployment.
