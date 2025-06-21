@@ -312,3 +312,17 @@ AttributeError: 'AsyncSession' object has no attribute 'query'
 2025-06-21 14:16:08,322 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("games")
 2025-06-21 14:16:08,324 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
 2025-06-21 14:16:08,327 - sqlalchemy.engine.Engine - INFO - COMMIT
+2025-06-21 14:18:03,340 - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-06-21 14:18:03,345 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("tournaments")
+2025-06-21 14:18:03,345 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:18:03,347 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("teams")
+2025-06-21 14:18:03,354 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:18:03,354 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("players")
+2025-06-21 14:18:03,354 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:18:03,354 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("rounds")
+2025-06-21 14:18:03,354 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:18:03,354 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("matches")
+2025-06-21 14:18:03,354 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:18:03,354 - sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("games")
+2025-06-21 14:18:03,354 - sqlalchemy.engine.Engine - INFO - [raw sql] ()
+2025-06-21 14:18:03,354 - sqlalchemy.engine.Engine - INFO - COMMIT
