@@ -18,7 +18,7 @@ def generate_round_robin_schedule(
 ) -> List[List[Tuple[Optional[Team], Optional[Team]]]]:
     """
     Circle method for round-robin.
-    Returns a list of rounds; each round is a list of (home, away) Team pairs.
+    Returns a list of rounds; each round is a list of (white, black) Team pairs.
     Inserts None for byes when odd number of teams.
     """
     n = len(teams)
@@ -31,16 +31,16 @@ def generate_round_robin_schedule(
     for round_idx in range(n - 1):
         pairs: List[Tuple[Optional[Team], Optional[Team]]] = []
         for i in range(n // 2):
-            home = teams[i]
-            away = teams[n - 1 - i]
+            white = teams[i]
+            black = teams[n - 1 - i]
             # skip None–None
-            if home is None and away is None:
+            if white is None and black is None:
                 continue
-            # alternate home/away for fairness
+            # alternate white/black for fairness
             if (round_idx % 2) == 0:
-                pairs.append((home, away))
+                pairs.append((white, black))
             else:
-                pairs.append((away, home))
+                pairs.append((black, white))
         schedule.append(pairs)
         # rotate all except first
         teams = [teams[0]] + [teams[-1]] + teams[1:-1]
@@ -92,32 +92,32 @@ def create_tournament_structure(
         )
         db.add(rd)
         db.flush()
-        for home, away in round_pairs:
+        for white, black in round_pairs:
             # bye if needed
-            if home is None or away is None:
+            if white is None or black is None:
                 continue
 
             match = Match(
                 tournament_id=tour.id,
                 round_id=rd.id,
                 round_number=rn,
-                home_team_id=home.id,
-                away_team_id=away.id,
+                white_team_id=white.id,
+                black_team_id=black.id,
                 scheduled_date=rd.start_date + timedelta(days=3)
             )
             db.add(match)
             db.flush()
-            create_match_games(db, match, home, away)
+            create_match_games(db, match, white, black)
 
     db.commit()
     return tour
 
 
-def create_match_games(db: Session, match: Match, home: Team, away: Team):
+def create_match_games(db: Session, match: Match, white: Team, black: Team):
     """Create 4 board games for a match, alternating colors."""
     # pick top-4 by rating then board_order
-    hp = sorted(home.players, key=lambda p: (-p.rating, p.board_order))[:4]
-    ap = sorted(away.players, key=lambda p: (-p.rating, p.board_order))[:4]
+    hp = sorted(white.players, key=lambda p: (-p.rating, p.board_order))[:4]
+    ap = sorted(black.players, key=lambda p: (-p.rating, p.board_order))[:4]
     if len(hp) < 4 or len(ap) < 4:
         raise ValueError("Each team needs at least 4 players")
 
@@ -136,89 +136,91 @@ def create_match_games(db: Session, match: Match, home: Team, away: Team):
 
 def calculate_standings(db: Session, tournament_id: int) -> List[Dict]:
     """Calculate tournament standings with Sonneborn-Berger tiebreaker"""
-    
+
     tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
     if not tournament:
         return []
-    
-    # Get all teams
+
     teams = db.query(models.Team).filter(models.Team.tournament_id == tournament_id).all()
-    
-    # Calculate points for each team
+
     standings = []
     for team in teams:
-        # Get all matches for this team
         matches = db.query(models.Match).filter(
-            (models.Match.home_team_id == team.id) | (models.Match.away_team_id == team.id),
+            (models.Match.white_team_id == team.id) | (models.Match.black_team_id == team.id),
             models.Match.tournament_id == tournament_id
         ).all()
-        
+
         match_points = 0.0
         game_points = 0.0
         sonneborn_berger = 0.0
         matches_played = 0
-        
+        wins = 0
+        draws = 0
+        losses = 0
+
         for match in matches:
             if not match.is_completed:
                 continue
-                
+
             matches_played += 1
-            is_home = match.home_team_id == team.id
-            team_score = match.home_score if is_home else match.away_score
-            opponent_score = match.away_score if is_home else match.home_score
-            opponent_id = match.away_team_id if is_home else match.home_team_id
-            
-            # Game points (individual board results)
+            is_white = match.white_team_id == team.id
+            team_score = match.white_score if is_white else match.black_score
+            opponent_score = match.black_score if is_white else match.white_score
+            opponent_id = match.black_team_id if is_white else match.white_team_id
+
             game_points += team_score
-            
-            # Match points (2 for win, 1 for draw, 0 for loss)
+
             if team_score > opponent_score:
                 match_points += 2.0
+                wins += 1
             elif team_score == opponent_score:
                 match_points += 1.0
-            
-            # Sonneborn-Berger: sum of (points scored against opponent * opponent's total points)
+                draws += 1
+            else:
+                losses += 1
+
             opponent_team = db.query(models.Team).filter(models.Team.id == opponent_id).first()
             if opponent_team:
                 opponent_total_points = calculate_team_total_points(db, opponent_team.id, tournament_id)
                 sonneborn_berger += team_score * opponent_total_points
-        
-        # Update team statistics
+
         team.match_points = match_points
         team.game_points = game_points
         team.sonneborn_berger = sonneborn_berger
-        
+
         standings.append({
             'team': team,
             'matches_played': matches_played,
             'match_points': match_points,
             'game_points': game_points,
-            'sonneborn_berger': sonneborn_berger
+            'sonneborn_berger': sonneborn_berger,
+            'wins': wins,
+            'draws': draws,
+            'losses': losses
         })
-    
-    # Sort by match points, then game points, then Sonneborn-Berger
+
     standings.sort(key=lambda x: (-x['match_points'], -x['game_points'], -x['sonneborn_berger']))
-    
-    # Add positions
+
     for i, standing in enumerate(standings):
         standing['position'] = i + 1
-    
+
     db.commit()
     return standings
+
 
 def calculate_team_total_points(db: Session, team_id: int, tournament_id: int) -> float:
     """Calculate total match points for a team"""
     matches = db.query(models.Match).filter(
-        (models.Match.home_team_id == team_id) | (models.Match.away_team_id == team_id),
+        (models.Match.white_team_id == team_id) | (models.Match.black_team_id == team_id),
         models.Match.tournament_id == tournament_id,
         models.Match.is_completed == True
     ).all()
     
     total_points = 0.0
     for match in matches:
-        is_home = match.home_team_id == team_id
-        team_score = match.home_score if is_home else match.away_score
-        opponent_score = match.away_score if is_home else match.home_score
+        is_white = match.white_team_id == team_id
+        team_score = match.white_score if is_white else match.black_score
+        opponent_score = match.black_score if is_white else match.white_score
         
         if team_score > opponent_score:
             total_points += 2.0
@@ -227,16 +229,18 @@ def calculate_team_total_points(db: Session, team_id: int, tournament_id: int) -
     
     return total_points
 
-def update_match_result(db: Session, match_id: int, game_results: List[Dict]):
-    """Update match result based on individual game results"""
+
+
+def update_match_result(db: Session, match_id: int, game_results: list):
+    """Update match result based on individual game results and handle round/tournament progress"""
     
     match = db.query(models.Match).filter(models.Match.id == match_id).first()
     if not match:
         raise ValueError("Match not found")
     
     # Update individual games
-    home_score = 0.0
-    away_score = 0.0
+    white_score = 0.0
+    black_score = 0.0
     
     for game_result in game_results:
         game = db.query(models.Game).filter(
@@ -262,28 +266,28 @@ def update_match_result(db: Session, match_id: int, game_results: List[Dict]):
             game.black_score = 0.5
         
         # Add to team scores
-        if game.white_player.team_id == match.home_team_id:
-            home_score += game.white_score
-            away_score += game.black_score
+        if game.white_player.team_id == match.white_team_id:
+            white_score += game.white_score
+            black_score += game.black_score
         else:
-            home_score += game.black_score
-            away_score += game.white_score
+            white_score += game.black_score
+            black_score += game.white_score
         
         # Update player statistics
         update_player_stats(db, game.white_player_id, game.white_score)
         update_player_stats(db, game.black_player_id, game.black_score)
     
     # Update match
-    match.home_score = home_score
-    match.away_score = away_score
+    match.white_score = white_score
+    match.black_score = black_score
     match.is_completed = True
     match.completed_date = datetime.utcnow()
     
     # Determine match result
-    if home_score > away_score:
-        match.result = "home_win"
-    elif away_score > home_score:
-        match.result = "away_win"
+    if white_score > black_score:
+        match.result = "white_win"
+    elif black_score > white_score:
+        match.result = "black_win"
     else:
         match.result = "draw"
     
@@ -291,6 +295,23 @@ def update_match_result(db: Session, match_id: int, game_results: List[Dict]):
     
     # Recalculate standings
     calculate_standings(db, match.tournament_id)
+    
+    # ✅ ROUND COMPLETION CHECK
+    round_matches = db.query(models.Match).filter(models.Match.round_id == match.round_id).all()
+    if all(m.is_completed for m in round_matches):
+        match.round.is_completed = True
+        db.commit()
+
+        # Update tournament current_round
+        completed_rounds = db.query(models.Round).filter(
+            models.Round.tournament_id == match.tournament_id,
+            models.Round.is_completed == True
+        ).count()
+
+        tournament = db.query(models.Tournament).filter(models.Tournament.id == match.tournament_id).first()
+        tournament.current_round = completed_rounds + 1
+        db.commit()
+
 
 def update_player_stats(db: Session, player_id: int, score: float):
     """Update player statistics after a game"""

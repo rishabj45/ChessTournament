@@ -11,7 +11,7 @@ from sqlalchemy import text
 
 from .database import engine, Base
 from .api import  tournaments, teams, players, matches
-import app.auth as auth
+from . import auth
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
@@ -22,6 +22,15 @@ app = FastAPI(
     title="Chess Tournament Management System",
     version=API_VERSION,
     docs_url="/docs" if DEBUG else None
+)
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # --- Startup / Shutdown ---

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Save, X, Plus, Trash2, User, Star } from 'lucide-react';
-
+import { apiService } from '@/services/api';
 interface Player {
   id: number;
   name: string;
@@ -26,13 +26,16 @@ const TeamEditor: React.FC<TeamEditorProps> = ({ team, isOpen, onClose, onSave, 
   const [editedTeam, setEditedTeam] = useState<Team | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [removedPlayers, setRemovedPlayers] = useState<Player[]>([]);
 
   useEffect(() => {
     if (team) {
       setEditedTeam({ ...team, players: [...team.players] });
+      setRemovedPlayers([]);
     }
   }, [team]);
 
+  // ✅ Defensive check for empty state
   if (!isOpen || !editedTeam || !isAdmin) return null;
 
   const handleTeamNameChange = (name: string) => {
@@ -72,42 +75,56 @@ const TeamEditor: React.FC<TeamEditorProps> = ({ team, isOpen, onClose, onSave, 
   const handleRemovePlayer = (playerId: number) => {
     if (!editedTeam || editedTeam.players.length <= 4) return;
 
-    setEditedTeam(prev => prev ? {
-      ...prev,
-      players: prev.players.filter(player => player.id !== playerId)
-    } : null);
+    setEditedTeam(prev => {
+      if (!prev) return null;
+      const playerToRemove = prev.players.find(p => p.id === playerId);
+      if (playerToRemove && playerToRemove.id && !isNaN(playerToRemove.id)) {
+        setRemovedPlayers(rp => [...rp, playerToRemove]);
+      }
+      return {
+        ...prev,
+        players: prev.players.filter(player => player.id !== playerId)
+      };
+    });
   };
 
   const handleSave = async () => {
-    if (!editedTeam) return;
-
-    // Validation
-    if (!editedTeam.name.trim()) {
-      setError('Team name is required');
-      return;
-    }
-
-    if (editedTeam.players.length < 4 || editedTeam.players.length > 6) {
-      setError('Team must have between 4 and 6 players');
-      return;
-    }
-
-    const invalidPlayers = editedTeam.players.filter(player => 
-      !player.name.trim() || player.rating < 0 || player.rating > 3000
-    );
-
-    if (invalidPlayers.length > 0) {
-      setError('All players must have valid names and ratings (0-3000)');
-      return;
-    }
-
+    if (!team || !editedTeam) return;
     try {
       setSaving(true);
-      setError(null);
-      await onSave(editedTeam);
+
+      // Save team details
+      await apiService.updateTeam(team.id, { name: editedTeam.name });
+
+      // Save players
+      for (const player of editedTeam.players) {
+        if (team.players.some(p => p.id === player.id)) {
+          await apiService.updatePlayer(player.id, {
+            name: player.name,
+            rating: player.rating,
+          });
+        } else {
+          await apiService.createPlayer({
+            name: player.name,
+            rating: player.rating,
+            team_id: team.id,
+          });
+        }
+      }
+
+      // Remove deleted players
+      for (const player of removedPlayers) {
+        await apiService.deletePlayer(player.id);
+      }
+
+      await onSave({
+        ...editedTeam,
+        players: [...editedTeam.players],
+      }); // Notify parent of update
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save team');
+      console.error('Failed to save team:', err);
+      setError('Failed to save team');
     } finally {
       setSaving(false);
     }

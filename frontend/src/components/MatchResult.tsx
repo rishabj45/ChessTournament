@@ -30,11 +30,26 @@ interface Match {
 interface MatchResultProps {
   match: Match;
   onClose: () => void;
-  onSave: (matchId: number, results: { [gameId: number]: string }) => Promise<void>;
+  onSave: (matchId: number, results: { board_number: number; result: string }[]) => Promise<void>;
   isAdmin: boolean;
 }
 
+const mapResultToBackend = (result: string) => {
+  if (result === '1-0') return 'white_win';
+  if (result === '0-1') return 'black_win';
+  if (result === '1/2-1/2') return 'draw';
+  return result;
+};
+
 const MatchResult: React.FC<MatchResultProps> = ({ match, onClose, onSave, isAdmin }) => {
+  if (!match || !match.games) {
+    return (
+      <div className="p-4 text-red-600 bg-red-50 rounded">
+        Invalid match data.
+      </div>
+    );
+  }
+
   const [results, setResults] = useState<{ [gameId: number]: string }>(() => {
     const initialResults: { [gameId: number]: string } = {};
     match.games.forEach(game => {
@@ -44,6 +59,7 @@ const MatchResult: React.FC<MatchResultProps> = ({ match, onClose, onSave, isAdm
     });
     return initialResults;
   });
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,11 +72,15 @@ const MatchResult: React.FC<MatchResultProps> = ({ match, onClose, onSave, isAdm
 
   const handleSave = async () => {
     if (!isAdmin) return;
-    
+
     try {
       setSaving(true);
       setError(null);
-      await onSave(match.id, results);
+      const formattedResults = match.games.map(game => ({
+        board_number: game.board_number,
+        result: mapResultToBackend(results[game.id] || game.result || '')
+      }));
+      await onSave(match.id, formattedResults);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save results');

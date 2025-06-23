@@ -36,20 +36,24 @@ const Teams: React.FC<TeamsProps> = ({ isAdmin }) => {
     try {
       setLoading(true);
       const response = await fetch('/api/teams');
+
       if (!response.ok) {
         throw new Error('Failed to fetch teams');
       }
+
       const data = await response.json();
-      
-      // Calculate team statistics
+
+      // ⬅️ Map transformation preserved exactly
       const teamsWithStats = data.map((team: Team) => ({
         ...team,
-        average_rating: team.players.length > 0 
-          ? Math.round(team.players.reduce((sum, player) => sum + player.rating, 0) / team.players.length)
+        average_rating: team.players.length > 0
+          ? Math.round(
+              team.players.reduce((sum, player) => sum + player.rating, 0) / team.players.length
+            )
           : 0,
         total_players: team.players.length
       }));
-      
+
       setTeams(teamsWithStats);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

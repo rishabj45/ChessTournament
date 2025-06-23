@@ -118,7 +118,7 @@ def login(login_request: LoginRequest):
     }
     return LoginResponse(access_token=access_token,token_type="bearer", user=user_info)
 
-@router.post("/verify")
+@router.post("/verify-token")
 def verify_token_endpoint(current_user: dict = Depends(get_current_user)):
     """Verify if token is valid."""
     return {"valid": True, "is_admin": current_user.get("is_admin", False)}

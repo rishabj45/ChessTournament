@@ -3,13 +3,18 @@ from sqlalchemy import desc, and_
 from typing import List, Optional
 from . import models, schemas
 from .tournament_logic import create_tournament_structure, calculate_standings, update_match_result, get_best_players
-
+from fastapi import HTTPException
 # Tournament CRUD
 def get_tournament(db: Session, tournament_id: int) -> Optional[models.Tournament]:
     return db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
 
 def get_current_tournament(db: Session) -> Optional[models.Tournament]:
-    return db.query(models.Tournament).filter(models.Tournament.status == "active").first()
+    return (
+        db.query(models.Tournament)
+        .order_by(models.Tournament.created_at.desc())
+        .first()
+    )
+
 
 def get_tournaments(db: Session, skip: int = 0, limit: int = 100) -> List[models.Tournament]:
     return db.query(models.Tournament).offset(skip).limit(limit).all()
@@ -46,7 +51,15 @@ def create_team(db: Session, team: schemas.TeamCreate) -> models.Team:
     db.commit()
     db.refresh(db_team)
     return db_team
-
+def map_frontend_result(result: str) -> str:
+    if result == '1-0':
+        return 'white_win'
+    elif result == '0-1':
+        return 'black_win'
+    elif result == '1/2-1/2':
+        return 'draw'
+    else:
+        raise HTTPException(status_code=400, detail=f"Invalid result: {result}")
 def update_team(db: Session, team_id: int, team_update: schemas.TeamUpdate) -> Optional[models.Team]:
     team = get_team(db, team_id)
     if not team:
@@ -97,7 +110,7 @@ def create_player(db: Session, player: schemas.PlayerCreate) -> models.Player:
     
     player_count = db.query(models.Player).filter(models.Player.team_id == player.team_id).count()
     if player_count >= 6:
-        raise ValueError("Team cannot have more than 6 players")
+        raise HTTPException(status_code=400, detail="Team cannot have more than 6 players")
     
     db_player = models.Player(**player.dict())
     db.add(db_player)
@@ -126,7 +139,7 @@ def delete_player(db: Session, player_id: int) -> bool:
     # Check minimum team size
     team_player_count = db.query(models.Player).filter(models.Player.team_id == player.team_id).count()
     if team_player_count <= 4:
-        raise ValueError("Team must have at least 4 players")
+        raise HTTPException(status_code=400, detail="Team must have at least 4 players")
     
     db.delete(player)
     db.commit()
@@ -153,15 +166,7 @@ def submit_match_result(db: Session, match_id: int, game_results: List[dict]) ->
     
     # Validate game results format
     for result in game_results:
-        if not all(key in result for key in ['board_number', 'result']):
-            raise ValueError("Invalid game result format")
-        if result['result'] not in ['white_win', 'black_win', 'draw']:
-            raise ValueError("Invalid game result value")
-        if result['board_number'] not in [1, 2, 3, 4]:
-            raise ValueError("Invalid board number")
-    
-    update_match_result(db, match_id, game_results)
-    return get_match(db, match_id)
+        result['result'] = map_frontend_result(result['result'])
 
 # Round CRUD
 def get_round(db: Session, round_id: int) -> Optional[models.Round]:

@@ -15,10 +15,8 @@ import {
   MatchResultForm,
 } from '../types';
 
-// Add this declaration to fix the ImportMeta.env error
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
-  // add other env variables here if needed
 }
 
 declare global {
@@ -26,7 +24,6 @@ declare global {
     readonly env: ImportMetaEnv;
   }
 }
-
 
 class ApiService {
   private api: AxiosInstance;
@@ -40,7 +37,6 @@ class ApiService {
       },
     });
 
-    // Request interceptor to add auth token
     this.api.interceptors.request.use(
       (config) => {
         const token = localStorage.getItem('access_token');
@@ -52,7 +48,6 @@ class ApiService {
       (error) => Promise.reject(error)
     );
 
-    // Response interceptor to handle errors
     this.api.interceptors.response.use(
       (response) => response,
       (error) => {
@@ -66,7 +61,6 @@ class ApiService {
     );
   }
 
-  // Generic request method
   private async request<T>(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     url: string,
@@ -80,29 +74,20 @@ class ApiService {
     return response.data;
   }
 
-  // Authentication
+  // ✅ Authentication
   async login(credentials: LoginRequest): Promise<AuthResponse> {
-    const formData = new FormData();
-    formData.append('username', credentials.username);
-    formData.append('password', credentials.password);
-    
-    const response = await this.api.post<AuthResponse>('/api/auth/login', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
+    return this.request('POST', '/api/auth/login', credentials);
   }
 
   async verifyToken(): Promise<{ valid: boolean }> {
-    return this.request('POST', '/api/auth/verify');
+    return this.request('POST', '/api/auth/verify-token');
   }
 
   async logout(): Promise<void> {
     return this.request('POST', '/api/auth/logout');
   }
 
-  // Tournaments
+  // ✅ Tournaments
   async getTournaments(): Promise<Tournament[]> {
     return this.request('GET', '/api/tournaments');
   }
@@ -119,7 +104,7 @@ class ApiService {
     return this.request('PUT', `/api/tournaments/${id}`, updates);
   }
 
-  // Teams
+  // ✅ Teams
   async getTeams(): Promise<Team[]> {
     return this.request('GET', '/api/teams');
   }
@@ -136,13 +121,17 @@ class ApiService {
     return this.request('DELETE', `/api/teams/${id}`);
   }
 
-  // Players
+  // ✅ Players
   async getPlayers(): Promise<Player[]> {
     return this.request('GET', '/api/players');
   }
 
-  async getPlayerRankings(): Promise<PlayerRanking[]> {
-    return this.request('GET', '/api/players/rankings');
+  async getPlayersByTeam(teamId: number): Promise<Player[]> {
+    return this.request('GET', `/api/teams/${teamId}/players`);
+  }
+
+  async getPlayerRankings(tournamentId: number): Promise<PlayerRanking[]> {
+    return this.request('GET', `/api/tournaments/${tournamentId}/best-players`);
   }
 
   async createPlayer(player: CreatePlayerForm): Promise<Player> {
@@ -157,90 +146,27 @@ class ApiService {
     return this.request('DELETE', `/api/players/${id}`);
   }
 
-  // Matches
+  // ✅ Matches
   async getMatches(): Promise<Match[]> {
     return this.request('GET', '/api/matches');
   }
 
-  async getMatchSchedule(): Promise<Match[]> {
-    return this.request('GET', '/api/matches/schedule');
+  async getMatchSchedule(tournamentId: number): Promise<Match[]> {
+    return this.request('GET', `/api/matches/tournament/${tournamentId}/schedule`);
   }
 
-  async updateMatchResult(id: number, result: MatchResultForm): Promise<Match> {
-    return this.request('PUT', `/api/matches/${id}/result`, result);
+  async submitMatchResults(matchId: number, data: MatchResultForm): Promise<Match> {
+    return this.request('POST', `/api/matches/${matchId}/submit-results`, data);
   }
 
-  // Standings (if you have a dedicated endpoint)
-  async getStandings(): Promise<TeamStanding[]> {
-    // This might be computed on the frontend or you might add this endpoint
-    const teams = await this.getTeams();
-    const matches = await this.getMatches();
-    return this.computeStandings(teams, matches);
+  // ✅ Standings
+  async getStandings(tournamentId: number): Promise<TeamStanding[]> {
+    return this.request('GET', `/api/tournaments/${tournamentId}/standings`);
   }
 
-  // Health check
+  // ✅ Health check
   async healthCheck(): Promise<{ status: string }> {
     return this.request('GET', '/health');
-  }
-
-  // Helper method to compute standings (this could be moved to backend)
-  private computeStandings(teams: Team[], matches: Match[]): TeamStanding[] {
-    const standings: TeamStanding[] = teams.map(team => ({
-      team,
-      matches_played: 0,
-      wins: 0,
-      draws: 0,
-      losses: 0,
-      match_points: 0,
-      game_points: 0,
-      sonneborn_berger: 0,
-      position: 0,
-    }));
-
-    // Compute standings from matches
-    matches.forEach(match => {
-      if (match.status === 'completed') {
-        const whiteStanding = standings.find(s => s.team.id === match.white_team_id);
-        const blackStanding = standings.find(s => s.team.id === match.black_team_id);
-
-        if (whiteStanding && blackStanding) {
-          whiteStanding.matches_played++;
-          blackStanding.matches_played++;
-          
-          whiteStanding.game_points += match.white_score;
-          blackStanding.game_points += match.black_score;
-
-          if (match.white_score > match.black_score) {
-            whiteStanding.wins++;
-            whiteStanding.match_points += 2;
-            blackStanding.losses++;
-          } else if (match.black_score > match.white_score) {
-            blackStanding.wins++;
-            blackStanding.match_points += 2;
-            whiteStanding.losses++;
-          } else {
-            whiteStanding.draws++;
-            blackStanding.draws++;
-            whiteStanding.match_points += 1;
-            blackStanding.match_points += 1;
-          }
-        }
-      }
-    });
-
-    // Sort by match points, then by game points, then by Sonneborn-Berger
-    standings.sort((a, b) => {
-      if (b.match_points !== a.match_points) return b.match_points - a.match_points;
-      if (b.game_points !== a.game_points) return b.game_points - a.game_points;
-      return b.sonneborn_berger - a.sonneborn_berger;
-    });
-
-    // Assign positions
-    standings.forEach((standing, index) => {
-      standing.position = index + 1;
-    });
-
-    return standings;
   }
 }
 

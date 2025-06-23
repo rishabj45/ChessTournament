@@ -15,11 +15,7 @@ interface Player {
   score: number;
 }
 
-interface BestPlayersProps {
-  onUpdate: () => Promise<void>;
-}
-
-const BestPlayers: React.FC<BestPlayersProps> = () => {
+const BestPlayers: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,12 +28,31 @@ const BestPlayers: React.FC<BestPlayersProps> = () => {
     try {
       setLoading(true);
       const current = await apiService.getCurrentTournament();
+
+      // ✅ Safeguard against null or undefined tournament
+      if (!current || !current.id) {
+        throw new Error('No active tournament found.');
+      }
+
       const response = await fetch(`/api/tournaments/${current.id}/best-players`);
       if (!response.ok) {
         throw new Error('Failed to fetch player rankings');
       }
+
       const data = await response.json();
-      setPlayers(data);
+      const formattedPlayers = data.map((p: any) => ({
+        id: p.player_id,
+        name: p.player_name,
+        rating: p.rating,
+        team_id: p.team_id,
+        team_name: p.team_name,
+        wins: p.wins,
+        draws: p.draws,
+        losses: p.losses,
+        games_played: p.games_played,
+        score: p.points,
+      }));
+      setPlayers(formattedPlayers);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -47,12 +62,9 @@ const BestPlayers: React.FC<BestPlayersProps> = () => {
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
-      case 1:
-        return <Trophy className="w-6 h-6 text-yellow-500" />;
-      case 2:
-        return <Medal className="w-6 h-6 text-gray-400" />;
-      case 3:
-        return <Award className="w-6 h-6 text-amber-600" />;
+      case 1: return <Trophy className="w-6 h-6 text-yellow-500" />;
+      case 2: return <Medal className="w-6 h-6 text-gray-400" />;
+      case 3: return <Award className="w-6 h-6 text-amber-600" />;
       default:
         return <div className="w-6 h-6 flex items-center justify-center text-gray-600 font-bold">{rank}</div>;
     }
@@ -102,68 +114,38 @@ const BestPlayers: React.FC<BestPlayersProps> = () => {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Rank
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Player
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Team
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Rating
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Games
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Score
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  W-D-L
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Performance
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rank</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Player</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Team</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Games</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">W-D-L</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Performance</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {players.map((player, index) => (
                 <tr key={player.id} className={`hover:bg-gray-50 ${index < 3 ? 'bg-gradient-to-r from-yellow-50 to-transparent' : ''}`}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {getRankIcon(index + 1)}
-                    </div>
+                    <div className="flex items-center">{getRankIcon(index + 1)}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <User className="w-4 h-4 text-gray-400 mr-2" />
-                      <div className="text-sm font-medium text-gray-900">
-                        {player.name}
-                      </div>
+                      <div className="text-sm font-medium text-gray-900">{player.name}</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{player.team_name}</div>
+                  <td className="px-6 py-4 text-sm text-gray-900">{player.team_name}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{player.rating}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{player.games_played}</td>
+                  <td className="px-6 py-4 text-sm font-bold text-blue-600">{player.score}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <span className="text-green-600 font-medium">{player.wins}</span>-
+                    <span className="text-yellow-600 font-medium">{player.draws}</span>-
+                    <span className="text-red-600 font-medium">{player.losses}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{player.rating}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{player.games_played}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-bold text-blue-600">{player.score}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      <span className="text-green-600 font-medium">{player.wins}</span>-
-                      <span className="text-yellow-600 font-medium">{player.draws}</span>-
-                      <span className="text-red-600 font-medium">{player.losses}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <div className="flex items-center">
                       <div className="text-sm font-medium text-gray-900">
                         {getScorePercentage(player.score, player.games_played)}%
@@ -171,10 +153,8 @@ const BestPlayers: React.FC<BestPlayersProps> = () => {
                       <div className="ml-2 w-16 bg-gray-200 rounded-full h-2">
                         <div
                           className="bg-blue-600 h-2 rounded-full"
-                          style={{
-                            width: `${getScorePercentage(player.score, player.games_played)}%`
-                          }}
-                        ></div>
+                          style={{ width: `${getScorePercentage(player.score, player.games_played)}%` }}
+                        />
                       </div>
                     </div>
                   </td>
@@ -188,14 +168,11 @@ const BestPlayers: React.FC<BestPlayersProps> = () => {
           <div className="text-center py-8">
             <User className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No players found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Players will appear here once games are played.
-            </p>
+            <p className="mt-1 text-sm text-gray-500">Players will appear here once games are played.</p>
           </div>
         )}
       </div>
 
-      {/* Top Performers Summary */}
       {players.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {players.slice(0, 3).map((player, index) => (
@@ -210,9 +187,7 @@ const BestPlayers: React.FC<BestPlayersProps> = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold text-blue-600">{player.score}</p>
-                  <p className="text-xs text-gray-500">
-                    {getScorePercentage(player.score, player.games_played)}%
-                  </p>
+                  <p className="text-xs text-gray-500">{getScorePercentage(player.score, player.games_played)}%</p>
                 </div>
               </div>
             </div>

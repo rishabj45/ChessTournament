@@ -141,20 +141,7 @@ export const usePlayers = (options?: UseApiOptions) => {
   return result;
 };
 
-export const usePlayerRankings = (options?: UseApiOptions) => {
-  const result = useQuery({
-    queryKey: ['players', 'rankings'],
-    queryFn: () => apiService.getPlayerRankings(),
-    ...options,
-  });
 
-  if (result.error) {
-    toast.error('Failed to fetch player rankings');
-    options?.onError?.(result.error);
-  }
-
-  return result;
-};
 
 export const useCreatePlayer = (options?: UseApiOptions) => {
   const queryClient = useQueryClient();
@@ -227,24 +214,10 @@ export const useMatches = (options?: UseApiOptions) => {
   return result;
 };
 
-export const useMatchSchedule = (options?: UseApiOptions) => {
-  const result = useQuery({
-    queryKey: ['matches', 'schedule'],
-    queryFn: () => apiService.getMatchSchedule(),
-    ...options,
-  });
-
-  if (result.error) {
-    toast.error('Failed to fetch match schedule');
-    options?.onError?.(result.error);
-  }
-
-  return result;
-};
 
 export const useUpdateMatchResult = (options?: UseApiOptions) => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
     mutationFn: ({ id, result }: { id: number; result: any }) =>
       apiService.updateMatchResult(id, result),
@@ -261,12 +234,50 @@ export const useUpdateMatchResult = (options?: UseApiOptions) => {
     },
   });
 };
+export const useMatchSchedule = (options?: UseApiOptions) => {
+    const { data: tournament } = useCurrentTournament();
+    const tournamentId = tournament?.id;
+  const result = useQuery({
+    queryKey: ['matches', tournamentId],
+    queryFn: () => tournamentId ? apiService.getMatchSchedule(tournamentId) : Promise.resolve(undefined),
+    enabled: !!tournamentId,
+    ...options,
+  });
 
+  if (result.error) {
+    toast.error('Failed to fetch match schedule');
+    options?.onError?.(result.error);
+  }
+
+  return result;
+};
+export const usePlayerRankings = (options?: UseApiOptions) => {
+  const { data: tournament } = useCurrentTournament();
+  const tournamentId = tournament?.id;
+  const result = useQuery({
+    queryKey: ['players', tournamentId],
+    queryFn: () => tournamentId ? apiService.getPlayerRankings(tournamentId) : Promise.resolve(undefined),
+    enabled: !!tournamentId,
+    ...options,
+  });
+
+  if (result.error) {
+    toast.error('Failed to fetch player rankings');
+    options?.onError?.(result.error);
+  }
+
+  return result;
+};
 // 🏁 Standings
 export const useStandings = (options?: UseApiOptions) => {
+  // Retrieve current tournament internally
+  const { data: tournament } = useCurrentTournament();
+  const tournamentId = tournament?.id;
+
   const result = useQuery({
-    queryKey: ['standings'],
-    queryFn: () => apiService.getStandings(),
+    queryKey: ['standings', tournamentId],
+    queryFn: () => apiService.getStandings(tournamentId!),
+    enabled: !!tournamentId,
     ...options,
   });
 
@@ -277,3 +288,4 @@ export const useStandings = (options?: UseApiOptions) => {
 
   return result;
 };
+

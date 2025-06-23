@@ -7,6 +7,8 @@ class PlayerBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     rating: int = Field(default=1200, ge=0, le=3000)
     board_order: int = Field(default=1, ge=1, le=6)
+from pydantic import BaseModel
+
 
 class PlayerCreate(PlayerBase):
     team_id: int
@@ -83,8 +85,8 @@ class Game(GameBase):
 # Match schemas
 class MatchBase(BaseModel):
     round_number: int = Field(..., ge=1)
-    home_team_id: int
-    away_team_id: int
+    white_team_id: int
+    black_team_id: int
     scheduled_date: Optional[datetime] = None
 
 class MatchCreate(MatchBase):
@@ -98,12 +100,12 @@ class Match(MatchBase):
     id: int
     tournament_id: int
     round_id: int
-    home_score: float = 0.0
-    away_score: float = 0.0
+    white_score: float = 0.0
+    black_score: float = 0.0
     completed_date: Optional[datetime] = None
     is_completed: bool = False
-    home_team: Team
-    away_team: Team
+    white_team: Team
+    black_team: Team
     games: List[Game] = []
     
     
@@ -158,14 +160,24 @@ class Tournament(TournamentBase):
     class Config:
         from_attributes = True
 
+
 # Standings schemas
+from pydantic import BaseModel
+from typing import Optional
+
 class TeamStanding(BaseModel):
-    position: int
-    team: Team
+    id: int
+    name: str
     matches_played: int
     match_points: float
     game_points: float
     sonneborn_berger: float
+    wins: int
+    draws: int
+    losses: int
+
+    class Config:
+        from_attributes = True
 
 class Standings(BaseModel):
     tournament: Tournament
@@ -286,20 +298,20 @@ class LoginResponse(BaseModel):
     class Config:
         from_attributes = True
 class MatchUpdate(BaseModel):
-    home_score: Optional[int] = None
-    away_score: Optional[int] = None
+    white_score: Optional[int] = None
+    black_score: Optional[int] = None
     status: Optional[str] = None
     played_date: Optional[datetime] = None
 
 class MatchResponse(BaseModel):
     id: int
     round_id: int
-    home_team_id: int
-    away_team_id: int
+    white_team_id: int
+    black_team_id: int
     scheduled_date: Optional[datetime]
     status: str
-    home_score: Optional[int]
-    away_score: Optional[int]
+    white_score: Optional[int]
+    black_score: Optional[int]
 
     class Config:
         from_attributes = True

@@ -49,12 +49,18 @@ const Schedule: React.FC<ScheduleProps> = ({ isAdmin }) => {
     try {
       setLoading(true);
       const current = await apiService.getCurrentTournament();
+
+      // ✅ Defensive check for null tournament
+      if (!current || !current.id) {
+        throw new Error('No active tournament found.');
+      }
+
       const response = await fetch(`/api/matches/tournament/${current.id}/schedule`);
       if (!response.ok) {
         throw new Error('Failed to fetch matches');
       }
       const data = await response.json();
-      setMatches(data);
+      setMatches(data.schedule); // ⬅️ your manual mapping logic retained
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -62,37 +68,36 @@ const Schedule: React.FC<ScheduleProps> = ({ isAdmin }) => {
     }
   };
 
-  const handleSaveMatchResult = async (matchId: number, results: { [gameId: number]: string }) => {
+  const handleSaveMatchResult = async (
+    matchId: number,
+    results: { board_number: number; result: string }[]
+  ) => {
     try {
-        const gameResults = Object.entries(results).map(([gameId, res]) => {
-    // Find board number from match.games if needed, here assume we have it
-          const game = selectedMatch?.games.find((g:Game) => g.id === Number(gameId));
-          return { board_number: game?.board_number, result: res };
-      });
       const token = localStorage.getItem('access_token');
       const res = await fetch(`/api/matches/${matchId}/submit-results`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(gameResults)
-    });
-    if (!res.ok) throw new Error('Failed to save match results');
-    await fetchMatches();
+        },
+        body: JSON.stringify(results)
+      });
+      if (!res.ok) throw new Error('Failed to save match results');
+      await fetchMatches();
     } catch (err) {
       throw err;
     }
   };
 
-  const getMatchStatus = (match: Match) => {
-    const completedGames = match.games.filter(game => game.result).length;
-    const totalGames = match.games.length;
-    
-    if (completedGames === 0) return 'Not Started';
-    if (completedGames === totalGames) return 'Completed';
-    return 'In Progress';
-  };
+const getMatchStatus = (match: Match) => {
+  const games = match.games || []; // ✅ Fallback
+  const completedGames = games.filter(game => game.result).length;
+  const totalGames = games.length;
+
+  if (completedGames === 0) return 'Not Started';
+  if (completedGames === totalGames) return 'Completed';
+  return 'In Progress';
+};
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -110,16 +115,18 @@ const Schedule: React.FC<ScheduleProps> = ({ isAdmin }) => {
   const getMatchResult = (match: Match) => {
     const whiteScore = match.white_team_score;
     const blackScore = match.black_team_score;
-    
+
     if (whiteScore === blackScore) return 'Draw';
     return whiteScore > blackScore ? `${match.white_team_name} Wins` : `${match.black_team_name} Wins`;
   };
 
-  const filteredMatches = selectedRound === 'all' 
-    ? matches 
-    : matches.filter(match => match.round_number === selectedRound);
+  const filteredMatches =
+    selectedRound === 'all'
+      ? matches
+      : matches.filter(match => match.round_number === selectedRound);
 
   const rounds = [...new Set(matches.map(match => match.round_number))].sort((a, b) => a - b);
+
 
   if (loading) {
     return (
@@ -168,8 +175,9 @@ const Schedule: React.FC<ScheduleProps> = ({ isAdmin }) => {
       {/* Matches List */}
       <div className="space-y-4">
         {filteredMatches.map((match) => {
-          const status = getMatchStatus(match);
-          const isCompleted = status === 'Completed';
+  const status = getMatchStatus(match);
+  const isCompleted = status === 'Completed';
+  const games = match.games || [];
           
           return (
             <div key={match.id} className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -237,7 +245,7 @@ const Schedule: React.FC<ScheduleProps> = ({ isAdmin }) => {
               {/* Board Results Preview */}
               <div className="px-6 pb-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {match.games.map((game) => (
+                  {games.map((game) => (
                     <div key={game.id} className="bg-gray-50 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-medium text-gray-600">

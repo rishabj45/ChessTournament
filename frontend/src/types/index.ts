@@ -75,7 +75,8 @@ export interface Game {
 
 // Standings Types
 export interface TeamStanding {
-  team: Team;
+  id: number;
+  name: string;
   matches_played: number;
   wins: number;
   draws: number;
@@ -83,7 +84,7 @@ export interface TeamStanding {
   match_points: number;
   game_points: number;
   sonneborn_berger: number;
-  position: number;
+  buchholz: number;
 }
 
 // Player Ranking Types
@@ -196,6 +197,8 @@ export interface LoginModalProps {
 export interface MatchResultProps {
   match: Match;
   onSubmit: (result: MatchResultForm) => Promise<void>;
+  onSave: (matchId: number, results: { board_number: number; result: string }[]) => Promise<void>;
+
   isLoading?: boolean;
 }
 

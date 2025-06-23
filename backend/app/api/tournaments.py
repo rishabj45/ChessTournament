@@ -56,26 +56,26 @@ async def update_tournament(
 @router.get("/{tournament_id}/standings", response_model=List[schemas.TeamStanding])
 def read_standings(tournament_id: int, db: Session = Depends(get_db)):
     """
-    Get the standings for a given tournament.
+    Get the standings for a given tournament as a flat response.
     """
     rows = crud.get_tournament_standings(db, tournament_id)
     if rows is None:
         raise HTTPException(status_code=404, detail="Tournament not found")
 
-    standings: List[schemas.TeamStanding] = []
+    standings = []
     for row in rows:
-        # row["team"] is a SQLAlchemy Team model; convert it to the Pydantic schema
-        team = schemas.Team.model_validate(row["team"])
-        standings.append(
-            schemas.TeamStanding(
-                position=row["position"],
-                team=team,
-                matches_played=row["matches_played"],
-                match_points=row["match_points"],
-                game_points=row["game_points"],
-                sonneborn_berger=row["sonneborn_berger"],
-            )
-        )
+        team = row["team"]
+        standings.append({
+            "id": team.id,
+            "name": team.name,
+            "matches_played": row["matches_played"],
+            "wins": row["wins"],
+            "draws": row["draws"],
+            "losses": row["losses"],
+            "match_points": row["match_points"],
+            "game_points": row["game_points"],
+            "sonneborn_berger": row["sonneborn_berger"],
+        })
 
     return standings
 

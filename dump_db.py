@@ -22,8 +22,10 @@ DATABASE_URL = os.getenv(
 )
 
 # Normalize to a filesystem path
-if DATABASE_URL.startswith("sqlite:///"):
-    db_path = DATABASE_URL.replace("sqlite:///", "")
+if DATABASE_URL.startswith("sqlite:///") or DATABASE_URL.startswith("sqlite+aiosqlite:///"):
+
+    db_path = DATABASE_URL.replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")
+
 else:
     raise ValueError("Only sqlite URLs of the form sqlite:///PATH are supported by this dump script")
 

@@ -42,8 +42,8 @@ class Team(Base):
         foreign_keys="[Player.team_id]"  # <-- Specify the foreign key here
     )
     captain = relationship("Player", foreign_keys=[captain_id])
-    home_matches = relationship("Match", foreign_keys="Match.home_team_id", back_populates="home_team")
-    away_matches = relationship("Match", foreign_keys="Match.away_team_id", back_populates="away_team")
+    white_matches = relationship("Match", foreign_keys="Match.white_team_id", back_populates="white_team")
+    black_matches = relationship("Match", foreign_keys="Match.black_team_id", back_populates="black_team")
 
 class Player(Base):
     __tablename__ = "players"
@@ -90,11 +90,11 @@ class Match(Base):
     tournament_id = Column(Integer, ForeignKey("tournaments.id"), nullable=False)
     round_id = Column(Integer, ForeignKey("rounds.id"), nullable=False)
     round_number = Column(Integer, nullable=False)
-    home_team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
-    away_team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
-    home_score = Column(Float, default=0.0)  # Total board points for home team
-    away_score = Column(Float, default=0.0)  # Total board points for away team
-    result = Column(String(10))  # "home_win", "away_win", "draw", "pending"
+    white_team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
+    black_team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
+    white_score = Column(Float, default=0.0)  
+    black_score = Column(Float, default=0.0)  
+    result = Column(String(10))
     scheduled_date = Column(DateTime)
     completed_date = Column(DateTime)
     is_completed = Column(Boolean, default=False)
@@ -103,8 +103,8 @@ class Match(Base):
     
     tournament = relationship("Tournament", back_populates="matches")
     round = relationship("Round", back_populates="matches")
-    home_team = relationship("Team", foreign_keys=[home_team_id], back_populates="home_matches")
-    away_team = relationship("Team", foreign_keys=[away_team_id], back_populates="away_matches")
+    white_team = relationship("Team", foreign_keys=[white_team_id], back_populates="white_matches")
+    black_team = relationship("Team", foreign_keys=[black_team_id], back_populates="black_matches")
     games = relationship("Game", back_populates="match", cascade="all, delete-orphan")
 
 class Game(Base):
