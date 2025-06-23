@@ -4,7 +4,7 @@ from typing import List, Optional
 from ..database import get_db
 from ..auth import get_admin_user, get_optional_admin
 from ..schemas import Tournament, TournamentCreate, TournamentUpdate, Standings, BestPlayers
-from .. import crud
+from .. import crud,schemas
 
 router = APIRouter(prefix="/api/tournaments", tags=["tournaments"])
 
@@ -52,17 +52,36 @@ async def update_tournament(
         raise HTTPException(status_code=404, detail="Tournament not found")
     return tournament
 
-@router.get("/{tournament_id}/standings", response_model=List[dict])
-async def get_tournament_standings(tournament_id: int, db: Session = Depends(get_db)):
-    """Get tournament standings"""
-    standings = crud.get_tournament_standings(db, tournament_id)
+
+@router.get("/{tournament_id}/standings", response_model=List[schemas.TeamStanding])
+def read_standings(tournament_id: int, db: Session = Depends(get_db)):
+    """
+    Get the standings for a given tournament.
+    """
+    rows = crud.get_tournament_standings(db, tournament_id)
+    if rows is None:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    standings: List[schemas.TeamStanding] = []
+    for row in rows:
+        # row["team"] is a SQLAlchemy Team model; convert it to the Pydantic schema
+        team = schemas.Team.model_validate(row["team"])
+        standings.append(
+            schemas.TeamStanding(
+                position=row["position"],
+                team=team,
+                matches_played=row["matches_played"],
+                match_points=row["match_points"],
+                game_points=row["game_points"],
+                sonneborn_berger=row["sonneborn_berger"],
+            )
+        )
+
     return standings
 
-@router.get("/{tournament_id}/best-players", response_model=List[dict])
-async def get_tournament_best_players(tournament_id: int, db: Session = Depends(get_db)):
-    """Get best players in tournament"""
-    best_players = crud.get_tournament_best_players(db, tournament_id)
-    return best_players
+@router.get("/{tournament_id}/best-players", response_model=List[schemas.PlayerStats])
+def best_players(tournament_id: int, db: Session = Depends(get_db)):
+    return crud.get_best_players(db, tournament_id)
 
 @router.get("/{tournament_id}/progress")
 async def get_tournament_progress(tournament_id: int, db: Session = Depends(get_db)):

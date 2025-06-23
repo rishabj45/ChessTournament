@@ -1,32 +1,37 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { LogIn, LogOut, Trophy } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import { useCurrentTournament } from '../hooks/useApi';
 import AdminToggle from './AdminToggle';
-import LoginModal from './LoginModal';
+import { TabType ,Tournament} from '../types'; 
 
 interface LayoutProps {
   children: React.ReactNode;
   currentTab: string;
-  onTabChange: (tab: string) => void;
+  onTabChange: (tab: TabType) => void;
+  tournament: Tournament | null;
+  isAuthenticated: boolean;
+  isAdminMode: boolean;
+  onToggleAdmin: () => void;
+  onLoginClick: () => void;
+  onLogout: () => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, currentTab, onTabChange }) => {
-  const { user, isAuthenticated, login, logout } = useAuth();
-  const { data: tournament } = useCurrentTournament();
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isAdminMode, setIsAdminMode] = useState(false);
-
-  const tabs = [
+const Layout: React.FC<LayoutProps> = ({
+  children,
+  currentTab,
+  onTabChange,
+  tournament,
+  isAuthenticated,
+  isAdminMode,
+  onToggleAdmin,
+  onLoginClick,
+  onLogout
+}) => {
+  const tabs: { id: TabType; label: string }[] = [
     { id: 'schedule', label: 'Schedule & Results' },
     { id: 'standings', label: 'Standings' },
     { id: 'teams', label: 'Teams' },
-    { id: 'players', label: 'Best Players' },
+    { id: 'best-players', label: 'Best Players' }, // Make sure ID matches App
   ];
-
-  const handleLogin = async (credentials: any) => {
-    await login(credentials);
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -36,7 +41,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentTab, onTabChange }) =>
           <div className="flex items-center justify-between">
             {/* Tournament Title */}
             <div className="flex items-center space-x-3">
-              <Trophy className="h-8 w-8 text-primary-600" />
+              <Trophy className="h-8 w-8 text-blue-600" />
               <h1 className="text-2xl font-bold text-gray-900">
                 {tournament?.name || 'Chess Tournament'}
               </h1>
@@ -48,25 +53,20 @@ const Layout: React.FC<LayoutProps> = ({ children, currentTab, onTabChange }) =>
                 <>
                   <AdminToggle
                     isAdminMode={isAdminMode}
-                    onToggle={setIsAdminMode}
+                    onToggle={onToggleAdmin}
                   />
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-600">
-                      Welcome, {user?.username}
-                    </span>
-                    <button
-                      onClick={logout}
-                      className="flex items-center space-x-1 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      <span>Logout</span>
-                    </button>
-                  </div>
+                  <button
+                    onClick={onLogout}
+                    className="flex items-center space-x-1 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Logout</span>
+                  </button>
                 </>
               ) : (
                 <button
-                  onClick={() => setIsLoginModalOpen(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white hover:bg-primary-700 rounded-md transition-colors"
+                  onClick={onLoginClick}
+                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors"
                 >
                   <LogIn className="h-4 w-4" />
                   <span>Admin Login</span>
@@ -77,17 +77,17 @@ const Layout: React.FC<LayoutProps> = ({ children, currentTab, onTabChange }) =>
         </div>
       </header>
 
-      {/* Navigation Tabs */}
+      {/* Tabs Navigation */}
       <nav className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex space-x-8">
+          <div className="flex space-x-8 overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   currentTab === tab.id
-                    ? 'border-primary-500 text-primary-600'
+                    ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -100,18 +100,17 @@ const Layout: React.FC<LayoutProps> = ({ children, currentTab, onTabChange }) =>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6">
-        {React.cloneElement(children as React.ReactElement, {
-          isAdminMode,
-          isAuthenticated,
-        })}
+        {children}
       </main>
 
-      {/* Login Modal */}
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-        onLogin={handleLogin}
-      />
+      {/* Admin Mode Indicator */}
+      {isAuthenticated && isAdminMode && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className="bg-orange-500 text-white px-3 py-2 rounded-lg shadow-lg flex items-center space-x-2">
+            <span className="text-sm font-medium">🔧 Admin Mode</span>
+          </div>
+        </div>
+      )}
 
       {/* Tournament Info Footer */}
       {tournament && (

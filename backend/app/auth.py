@@ -89,3 +89,36 @@ async def get_optional_admin(credentials: HTTPAuthorizationCredentials = Depends
 get_current_admin = get_admin_user
 get_current_admin_user = get_admin_user
 require_admin_mode = get_admin_user
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from app.schemas import LoginRequest, LoginResponse
+
+router = APIRouter(prefix="/api/auth", tags=["authentication"])
+
+@router.post("/login", response_model=LoginResponse)
+def login(login_request: LoginRequest):
+    """Admin login endpoint."""
+    # Verify username and password (only one admin user)
+    expected_user = os.getenv("ADMIN_USERNAME", "admin")
+    if login_request.username != expected_user or not authenticate_admin(login_request.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": login_request.username, "is_admin": True},
+        expires_delta=access_token_expires
+    )
+    user_info = {
+        "id": 0,
+        "username": expected_user,
+        "is_admin": True
+    }
+    return LoginResponse(access_token=access_token,token_type="bearer", user=user_info)
+
+@router.post("/verify")
+def verify_token_endpoint(current_user: dict = Depends(get_current_user)):
+    """Verify if token is valid."""
+    return {"valid": True, "is_admin": current_user.get("is_admin", False)}

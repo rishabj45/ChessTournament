@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { apiService } from '../services/api';
 import { LoginRequest, AuthResponse, UseAuthReturn } from '../types';
 import toast from 'react-hot-toast';
@@ -7,113 +11,104 @@ import toast from 'react-hot-toast';
 export const useAuth = (): UseAuthReturn => {
   const [user, setUser] = useState<AuthResponse['user'] | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [adminMode, setAdminMode] = useState(false);
   const queryClient = useQueryClient();
 
-  // Load user from localStorage on mount
+  // Helper to clear session
+  const clearSession = (message?: string) => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+    setUser(null);
+    setIsAuthenticated(false);
+    if (message) toast(message);
+  };
+
+  // Load user from localStorage
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     const token = localStorage.getItem('access_token');
-    
     if (storedUser && token) {
       try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
+        setUser(JSON.parse(storedUser));
         setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error parsing stored user:', error);
-        localStorage.removeItem('user');
-        localStorage.removeItem('access_token');
+      } catch {
+        clearSession();
       }
     }
   }, []);
 
-  // Verify token on app load
-  const { isLoading } = useQuery(
-    ['auth', 'verify'],
-    () => apiService.verifyToken(),
-    {
-      enabled: !!localStorage.getItem('access_token'),
-      retry: false,
-      onError: () => {
-        // Token is invalid, clear storage
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user');
-        setUser(null);
-        setIsAuthenticated(false);
-      },
+  // 🛡️ Verify token on load — auto-logout if invalid
+  const {
+    data: verifyData,
+    error: verifyError,
+    isLoading: verifyLoading,
+  } = useQuery<{ valid: boolean }, Error>({
+    queryKey: ['auth', 'verify'],
+    queryFn: () => apiService.verifyToken(),
+    enabled: !!localStorage.getItem('access_token'),
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (verifyData && !verifyData.valid) {
+      clearSession('Session expired. Please log in again.');
     }
-  );
-
-  // Login mutation
-  const loginMutation = useMutation(
-    (credentials: LoginRequest) => apiService.login(credentials),
-    {
-      onSuccess: (data: AuthResponse) => {
-        // Store token and user info
-        localStorage.setItem('access_token', data.access_token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        
-        setUser(data.user);
-        setIsAuthenticated(true);
-        
-        toast.success('Successfully logged in!');
-        
-        // Invalidate all queries to refetch with new auth
-        queryClient.invalidateQueries();
-      },
-      onError: (error: any) => {
-        console.error('Login error:', error);
-        toast.error(error.response?.data?.detail || 'Login failed');
-      },
+    if (verifyError) {
+      clearSession('Session invalid or expired.');
     }
-  );
+  }, [verifyData, verifyError]);
 
-  // Logout mutation
-  const logoutMutation = useMutation(
-    () => apiService.logout(),
-    {
-      onSuccess: () => {
-        // Clear storage and state
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user');
-        setUser(null);
-        setIsAuthenticated(false);
-        
-        toast.success('Successfully logged out!');
-        
-        // Clear all cached data
-        queryClient.clear();
-      },
-      onError: (error: any) => {
-        console.error('Logout error:', error);
-        // Still clear local state even if server request fails
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user');
-        setUser(null);
-        setIsAuthenticated(false);
-        
-        toast.error('Logout failed, but you have been logged out locally');
-      },
-    }
-  );
+  // 🔐 Login mutation
+  const { mutate: loginMutate, isPending: loginLoading } = useMutation<
+    AuthResponse,
+    Error,
+    LoginRequest
+  >({
+    mutationFn: (creds) => apiService.login(creds),
+    onSuccess: (data) => {
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setUser(data.user);
+      setIsAuthenticated(true);
+      toast.success('Successfully logged in!');
+      queryClient.invalidateQueries();
+    },
+    onError: (err: any) => {
+      console.error(err);
+      toast.error(err.response?.data?.detail || 'Login failed');
+    },
+  });
 
-  const login = async (credentials: LoginRequest): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      loginMutation.mutate(credentials, {
-        onSuccess: () => resolve(),
-        onError: (error) => reject(error),
-      });
-    });
-  };
+  // 🔓 Logout mutation
+  const { mutate: logoutMutate, isPending: logoutLoading } = useMutation<
+    void,
+    Error
+  >({
+    mutationFn: () => apiService.logout(),
+    onSuccess: () => {
+      clearSession('Successfully logged out!');
+      queryClient.clear();
+    },
+    onError: (err: any) => {
+      console.error(err);
+      clearSession('Logout failed, but you have been logged out locally');
+    },
+  });
 
-  const logout = (): void => {
-    logoutMutation.mutate();
-  };
+  // Handlers
+  const login = (creds: LoginRequest) =>
+    new Promise<void>((res, rej) =>
+      loginMutate(creds, { onSuccess: () => res(), onError: (e) => rej(e) })
+    );
+  const logout = () => logoutMutate();
+  const toggleAdminMode = () => setAdminMode((m) => !m);
 
   return {
     user,
     isAuthenticated,
-    isLoading: isLoading || loginMutation.isLoading || logoutMutation.isLoading,
+    isLoading: verifyLoading || loginLoading || logoutLoading,
+    adminMode,
+    toggleAdminMode,
     login,
     logout,
   };

@@ -169,11 +169,14 @@ export interface UseApiOptions {
   onError?: (error: any) => void;
   enabled?: boolean;
 }
+export type TabType = 'schedule' | 'standings' | 'teams' | 'best-players';
 
 export interface UseAuthReturn {
   user: AuthResponse['user'] | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  adminMode: boolean;
+  toggleAdminMode: () => void; 
   login: (credentials: LoginRequest) => Promise<void>;
   logout: () => void;
 }
@@ -187,7 +190,7 @@ export interface AdminToggleProps {
 export interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (credentials: LoginRequest) => Promise<void>;
+  onLogin: (credentials: LoginRequest) => Promise<boolean>;
 }
 
 export interface MatchResultProps {

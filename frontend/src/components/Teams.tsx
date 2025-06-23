@@ -65,7 +65,7 @@ const Teams: React.FC<TeamsProps> = ({ isAdmin }) => {
 
   const handleSaveTeam = async (editedTeam: Team) => {
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = localStorage.getItem('access_token');
       const response = await fetch(`/api/teams/${editedTeam.id}`, {
         method: 'PUT',
         headers: {
@@ -73,13 +73,7 @@ const Teams: React.FC<TeamsProps> = ({ isAdmin }) => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          name: editedTeam.name,
-          players: editedTeam.players.map(player => ({
-            id: player.id > 1000000000 ? undefined : player.id, // New players have temporary IDs
-            name: player.name,
-            rating: player.rating,
-            team_id: editedTeam.id
-          }))
+          name: editedTeam.name
         })
       });
 

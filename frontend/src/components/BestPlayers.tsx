@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Medal, Award, User } from 'lucide-react';
+import { apiService } from '@/services/api';
 
 interface Player {
   id: number;
@@ -14,7 +15,9 @@ interface Player {
   score: number;
 }
 
-interface BestPlayersProps {}
+interface BestPlayersProps {
+  onUpdate: () => Promise<void>;
+}
 
 const BestPlayers: React.FC<BestPlayersProps> = () => {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -28,7 +31,8 @@ const BestPlayers: React.FC<BestPlayersProps> = () => {
   const fetchPlayerRankings = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/players/rankings');
+      const current = await apiService.getCurrentTournament();
+      const response = await fetch(`/api/tournaments/${current.id}/best-players`);
       if (!response.ok) {
         throw new Error('Failed to fetch player rankings');
       }

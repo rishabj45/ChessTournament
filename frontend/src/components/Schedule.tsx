@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Users, Eye, Edit } from 'lucide-react';
 import MatchResult from './MatchResult';
+import { apiService } from '@/services/api';
 
 interface Game {
   id: number;
@@ -30,6 +31,7 @@ interface Match {
 
 interface ScheduleProps {
   isAdmin: boolean;
+  onUpdate: () => Promise<void>;
 }
 
 const Schedule: React.FC<ScheduleProps> = ({ isAdmin }) => {
@@ -46,7 +48,8 @@ const Schedule: React.FC<ScheduleProps> = ({ isAdmin }) => {
   const fetchMatches = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/matches/schedule');
+      const current = await apiService.getCurrentTournament();
+      const response = await fetch(`/api/matches/tournament/${current.id}/schedule`);
       if (!response.ok) {
         throw new Error('Failed to fetch matches');
       }
@@ -61,21 +64,22 @@ const Schedule: React.FC<ScheduleProps> = ({ isAdmin }) => {
 
   const handleSaveMatchResult = async (matchId: number, results: { [gameId: number]: string }) => {
     try {
-      const response = await fetch(`/api/matches/${matchId}/result`, {
-        method: 'PUT',
+        const gameResults = Object.entries(results).map(([gameId, res]) => {
+    // Find board number from match.games if needed, here assume we have it
+          const game = selectedMatch?.games.find((g:Game) => g.id === Number(gameId));
+          return { board_number: game?.board_number, result: res };
+      });
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/matches/${matchId}/submit-results`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
-        },
-        body: JSON.stringify({ results })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save match results');
-      }
-
-      // Refresh matches after saving
-      await fetchMatches();
+          'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(gameResults)
+    });
+    if (!res.ok) throw new Error('Failed to save match results');
+    await fetchMatches();
     } catch (err) {
       throw err;
     }

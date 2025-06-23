@@ -73,15 +73,21 @@ def delete_team(db: Session, team_id: int) -> bool:
 def get_player(db: Session, player_id: int) -> Optional[models.Player]:
     return db.query(models.Player).filter(models.Player.id == player_id).first()
 
-def get_players(db: Session, team_id: Optional[int] = None, tournament_id: Optional[int] = None) -> List[models.Player]:
+# in app/crud.py
+def get_players(
+    db: Session,
+    team_id: Optional[int] = None,
+    tournament_id: Optional[int] = None,
+    skip: int = 0,
+    limit: int = 100
+) -> List[models.Player]:
     query = db.query(models.Player)
-    
     if team_id:
         query = query.filter(models.Player.team_id == team_id)
     elif tournament_id:
         query = query.join(models.Team).filter(models.Team.tournament_id == tournament_id)
-    
-    return query.order_by(models.Player.team_id, models.Player.board_order).all()
+    return query.offset(skip).limit(limit).all()
+
 
 def create_player(db: Session, player: schemas.PlayerCreate) -> models.Player:
     # Check team player limit
@@ -202,6 +208,62 @@ def get_recent_results(db: Session, tournament_id: int, limit: int = 10) -> List
         models.Match.tournament_id == tournament_id,
         models.Match.is_completed == True
     ).order_by(desc(models.Match.completed_date)).limit(limit).all()
+
+
+# ... (existing CRUD functions for Tournament, Team, Player, Match, Round, Game) ...
+
+# Add missing functions for matches and games
+
+def get_match_with_games(db: Session, match_id: int) -> Optional[models.Match]:
+    """Get a specific match including all games."""
+    match = db.query(models.Match).filter(models.Match.id == match_id).first()
+    return match
+
+def get_tournament_matches(db: Session, tournament_id: int, round_number: Optional[int] = None) -> List[models.Match]:
+    """Get all matches for a tournament, optionally filtered by round."""
+    query = db.query(models.Match).filter(models.Match.tournament_id == tournament_id)
+    if round_number is not None:
+        query = query.filter(models.Match.round_number == round_number)
+    return query.order_by(models.Match.round_number, models.Match.id).all()
+
+def get_completed_matches(db: Session, tournament_id: int) -> List[models.Match]:
+    """Get all completed matches for a tournament."""
+    return db.query(models.Match).filter(
+        models.Match.tournament_id == tournament_id,
+        models.Match.is_completed == True
+    ).all()
+
+def update_game_result(db: Session, game_id: int, result: Optional[str]) -> Optional[models.Game]:
+    """Update result for a single game."""
+    game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not game:
+        return None
+    if result is None:
+        # Reset game to pending
+        game.result = None
+        game.white_score = 0.0
+        game.black_score = 0.0
+        game.is_completed = False
+    else:
+        # Interpret '1-0', '0-1', '1/2-1/2'
+        if result == '1-0':
+            game.white_score = 1.0
+            game.black_score = 0.0
+            game.result = '1-0'
+        elif result == '0-1':
+            game.white_score = 0.0
+            game.black_score = 1.0
+            game.result = '0-1'
+        elif result == '1/2-1/2':
+            game.white_score = 0.5
+            game.black_score = 0.5
+            game.result = '1/2-1/2'
+        game.is_completed = True
+    db.commit()
+    db.refresh(game)
+    return game
+
+# ... (rest of CRUD functions) ...
 
 def get_tournament_progress(db: Session, tournament_id: int) -> dict:
     """Get tournament progress statistics"""

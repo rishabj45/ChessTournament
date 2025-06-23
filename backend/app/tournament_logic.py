@@ -5,162 +5,134 @@ from datetime import datetime, timedelta
 import itertools
 import random
 
-def generate_round_robin_schedule(teams: List[models.Team]) -> List[List[Tuple[int, int]]]:
+
+from typing import List, Optional, Tuple, Dict
+from sqlalchemy.orm import Session
+from datetime import datetime, timedelta
+
+from .models import Team, Tournament, Round, Match, Game, Player
+from .schemas import TournamentCreate
+
+def generate_round_robin_schedule(
+    teams: List[Team]
+) -> List[List[Tuple[Optional[Team], Optional[Team]]]]:
     """
-    Generate round-robin schedule with fair color distribution.
-    Returns list of rounds, each containing list of (home_team_id, away_team_id) tuples.
+    Circle method for round-robin.
+    Returns a list of rounds; each round is a list of (home, away) Team pairs.
+    Inserts None for byes when odd number of teams.
     """
-    num_teams = len(teams)
-    team_ids = [team.id for team in teams]
-    
-    if num_teams < 2:
-        return []
-    
-    # Handle odd number of teams by adding a "bye"
-    if num_teams % 2 == 1:
-        team_ids.append(None)  # None represents bye
-        num_teams += 1
-    
-    # Generate round-robin pairings
-    rounds = []
-    n = num_teams
-    
-    # Create rotation schedule
-    for round_num in range(n - 1):
-        round_matches = []
-        
-        # Generate matches for this round
+    n = len(teams)
+    # If odd, append a dummy None (bye)
+    if n % 2 == 1:
+        teams = teams + [None]
+        n += 1
+
+    schedule: List[List[Tuple[Optional[Team], Optional[Team]]]] = []
+    for round_idx in range(n - 1):
+        pairs: List[Tuple[Optional[Team], Optional[Team]]] = []
         for i in range(n // 2):
-            team1_idx = i
-            team2_idx = n - 1 - i
-            
-            team1 = team_ids[team1_idx]
-            team2 = team_ids[team2_idx]
-            
-            # Skip if either team is bye
-            if team1 is None or team2 is None:
+            home = teams[i]
+            away = teams[n - 1 - i]
+            # skip None–None
+            if home is None and away is None:
                 continue
-            
-            # Determine home/away for color balance
-            # Alternate home advantage and consider round number for fairness
-            if (round_num + i) % 2 == 0:
-                round_matches.append((team1, team2))  # team1 home
+            # alternate home/away for fairness
+            if (round_idx % 2) == 0:
+                pairs.append((home, away))
             else:
-                round_matches.append((team2, team1))  # team2 home
-        
-        rounds.append(round_matches)
-        
-        # Rotate teams (keep first team fixed, rotate others)
-        team_ids = [team_ids[0]] + [team_ids[-1]] + team_ids[1:-1]
-    
-    return rounds
+                pairs.append((away, home))
+        schedule.append(pairs)
+        # rotate all except first
+        teams = [teams[0]] + [teams[-1]] + teams[1:-1]
+    return schedule
+
 
 def create_tournament_structure(
     db: Session,
-    tournament_data: schemas.TournamentCreate
-) -> models.Tournament:
-    """Create complete tournament structure with teams, players, and matches"""
-    
-    # Create tournament
-    tournament = models.Tournament(
-        name=tournament_data.name,
-        description=tournament_data.description,
-        start_date=tournament_data.start_date or datetime.utcnow(),
-        end_date=tournament_data.end_date,
+    data: TournamentCreate
+) -> Tournament:
+    """Create a tournament, its teams, players, rounds, matches, and games."""
+    # 1️⃣ Tournament
+    tour = Tournament(
+        name=data.name,
+        description=data.description,
+        start_date=data.start_date or datetime.utcnow(),
+        end_date=data.end_date,
         status="active"
     )
-    db.add(tournament)
-    db.flush()  # Get tournament ID
-    
-    # Create teams and players
-    teams = []
-    for i, (team_name, team_players) in enumerate(zip(tournament_data.team_names, tournament_data.players_per_team)):
-        team = models.Team(
-            name=team_name,
-            tournament_id=tournament.id
-        )
+    db.add(tour)
+    db.flush()  # get tour.id
+
+    # 2️⃣ Teams & Players
+    teams: List[Team] = []
+    for tname, plist in zip(data.team_names, data.players_per_team):
+        team = Team(name=tname, tournament_id=tour.id)
         db.add(team)
-        db.flush()  # Get team ID
-        
-        # Create players for this team
-        for j, player_data in enumerate(team_players):
-            player = models.Player(
-                name=player_data.name,
-                rating=player_data.rating,
-                team_id=team.id,
-                board_order=j + 1  # Ordered by input sequence
-            )
-            db.add(player)
-        
-        teams.append(team)
-    
-    # Generate tournament schedule
-    schedule = generate_round_robin_schedule(teams)
-    tournament.total_rounds = len(schedule)
-    
-    # Create rounds and matches
-    for round_num, round_matches in enumerate(schedule, 1):
-        # Create round
-        round_obj = models.Round(
-            tournament_id=tournament.id,
-            round_number=round_num,
-            start_date=tournament.start_date + timedelta(days=(round_num - 1) * 7),  # Weekly rounds
-            end_date=tournament.start_date + timedelta(days=round_num * 7 - 1)
-        )
-        db.add(round_obj)
         db.flush()
-        
-        # Create matches for this round
-        for home_team_id, away_team_id in round_matches:
-            match = models.Match(
-                tournament_id=tournament.id,
-                round_id=round_obj.id,
-                round_number=round_num,
-                home_team_id=home_team_id,
-                away_team_id=away_team_id,
-                scheduled_date=round_obj.start_date + timedelta(days=3)  # Mid-week matches
+        for idx, p in enumerate(plist, start=1):
+            db.add(Player(
+                name=p.name,
+                rating=p.rating,
+                team_id=team.id,
+                board_order=idx
+            ))
+        teams.append(team)
+
+    # 3️⃣ Schedule
+    schedule = generate_round_robin_schedule(teams)
+    tour.total_rounds = len(schedule)
+
+    # 4️⃣ Persist Rounds, Matches, Games
+    for rn, round_pairs in enumerate(schedule, start=1):
+        rd = Round(
+            tournament_id=tour.id,
+            round_number=rn,
+            start_date=tour.start_date + timedelta(days=(rn - 1) * 7),
+            end_date=tour.start_date + timedelta(days=rn * 7 - 1)
+        )
+        db.add(rd)
+        db.flush()
+        for home, away in round_pairs:
+            # bye if needed
+            if home is None or away is None:
+                continue
+
+            match = Match(
+                tournament_id=tour.id,
+                round_id=rd.id,
+                round_number=rn,
+                home_team_id=home.id,
+                away_team_id=away.id,
+                scheduled_date=rd.start_date + timedelta(days=3)
             )
             db.add(match)
             db.flush()
-            
-            # Create games for this match (4 boards)
-            home_team = db.query(models.Team).filter(models.Team.id == home_team_id).first()
-            away_team = db.query(models.Team).filter(models.Team.id == away_team_id).first()
-            
-            create_match_games(db, match, home_team, away_team)
-    
-    db.commit()
-    return tournament
+            create_match_games(db, match, home, away)
 
-def create_match_games(db: Session, match: models.Match, home_team: models.Team, away_team: models.Team):
-    """Create individual games for a team match"""
-    
-    # Get top 4 players from each team by rating
-    home_players = sorted(home_team.players, key=lambda p: (-p.rating, p.board_order))[:4]
-    away_players = sorted(away_team.players, key=lambda p: (-p.rating, p.board_order))[:4]
-    
-    # Ensure we have 4 players from each team
-    if len(home_players) < 4 or len(away_players) < 4:
-        raise ValueError("Each team must have at least 4 players")
-    
-    # Create 4 board games
-    # Home team gets white on boards 1,3 and black on boards 2,4
+    db.commit()
+    return tour
+
+
+def create_match_games(db: Session, match: Match, home: Team, away: Team):
+    """Create 4 board games for a match, alternating colors."""
+    # pick top-4 by rating then board_order
+    hp = sorted(home.players, key=lambda p: (-p.rating, p.board_order))[:4]
+    ap = sorted(away.players, key=lambda p: (-p.rating, p.board_order))[:4]
+    if len(hp) < 4 or len(ap) < 4:
+        raise ValueError("Each team needs at least 4 players")
+
     for board in range(1, 5):
-        if board in [1, 3]:  # Home team plays white
-            white_player = home_players[board - 1]
-            black_player = away_players[board - 1]
-        else:  # Away team plays white
-            white_player = away_players[board - 1]
-            black_player = home_players[board - 1]
-        
-        game = models.Game(
+        if board in (1, 3):
+            white, black = hp[board - 1], ap[board - 1]
+        else:
+            white, black = ap[board - 1], hp[board - 1]
+        db.add(Game(
             match_id=match.id,
             board_number=board,
-            white_player_id=white_player.id,
-            black_player_id=black_player.id,
+            white_player_id=white.id,
+            black_player_id=black.id,
             result="pending"
-        )
-        db.add(game)
+        ))
 
 def calculate_standings(db: Session, tournament_id: int) -> List[Dict]:
     """Calculate tournament standings with Sonneborn-Berger tiebreaker"""
@@ -337,35 +309,41 @@ def update_player_stats(db: Session, player_id: int, score: float):
         player.losses += 1
 
 def get_best_players(db: Session, tournament_id: int) -> List[Dict]:
-    """Get players ranked by performance"""
-    players = db.query(models.Player).join(models.Team).filter(
-        models.Team.tournament_id == tournament_id
-    ).all()
-    
-    player_stats = []
-    for player in players:
-        if player.games_played == 0:
-            win_percentage = 0.0
-            performance_rating = player.rating
-        else:
-            win_percentage = (player.points / player.games_played) * 100
-            # Simple performance rating calculation
-            performance_rating = player.rating + int((player.points / player.games_played - 0.5) * 400)
-        
-        player_stats.append({
-            'player': player,
-            'win_percentage': win_percentage,
-            'performance_rating': performance_rating
-        })
-    
-    # Sort by wins first, then by win percentage, then by rating
-    player_stats.sort(key=lambda x: (-x['player'].wins, -x['win_percentage'], -x['player'].rating))
-    
-    # Add positions
-    for i, stats in enumerate(player_stats):
-        stats['position'] = i + 1
-    
-    return player_stats
+    tour = db.query(models.Tournament).get(tournament_id)
+    if not tour:
+        return []
+
+    stats = []
+    for team in tour.teams:
+        for p in team.players:
+            # Now p.team is already loaded and p.games_played, p.points, etc.
+            if p.games_played:
+                win_pct = p.points / p.games_played * 100
+                perf = p.rating + int((p.points / p.games_played - 0.5) * 400)
+            else:
+                win_pct, perf = 0.0, p.rating
+
+            stats.append({
+                "player_id":          p.id,
+                "player_name":        p.name,
+                "team_id":            team.id,
+                "rating":             p.rating,
+                "games_played":       p.games_played,
+                "wins":               p.wins,
+                "draws":              p.draws,
+                "losses":             p.losses,
+                "points":             p.points,
+                "win_percentage":     win_pct,
+                "performance_rating": perf,
+            })
+
+    # sort & assign positions
+    stats.sort(key=lambda x: (-x["wins"], -x["win_percentage"], -x["rating"]))
+    for idx, row in enumerate(stats, start=1):
+        row["position"] = idx
+
+    return stats
+
 
 def update_board_result(db: Session, game_id: int, result: str):
     """

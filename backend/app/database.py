@@ -1,23 +1,26 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+# backend/app/database.py
+
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./chess_tournament.db")
+# For sync, strip the '+aiosqlite' if present
+raw_url = os.getenv("DATABASE_URL", "sqlite:///./chess_tournament.db")
+DATABASE_URL = raw_url.replace("sqlite+aiosqlite://", "sqlite://")
 
-engine = create_async_engine(DATABASE_URL, echo=True)
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+# If it's SQLite, allow multithread
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite://") else {}
+engine = create_engine(DATABASE_URL, echo=False, connect_args=connect_args)
+
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
 
-async def get_db():
-    db = AsyncSessionLocal()
+def get_db():
+    db = SessionLocal()
     try:
         yield db
     finally:
-        await db.close()
-
-async def create_tables():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        db.close()

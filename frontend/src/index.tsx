@@ -2,7 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+const queryClient = new QueryClient();
 // Error boundary component
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -78,9 +80,11 @@ const root = ReactDOM.createRoot(rootElement);
 
 root.render(
   <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+     <ErrorBoundary>
+       <App />
+     </ErrorBoundary>
+    </QueryClientProvider>
   </React.StrictMode>
 );
 
@@ -162,4 +166,3 @@ if (process.env.NODE_ENV === 'development') {
   console.log('Available dev tools: window.chessApp');
 }
 
-export default App;

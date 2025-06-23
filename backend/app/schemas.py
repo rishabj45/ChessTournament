@@ -100,12 +100,12 @@ class Match(MatchBase):
     round_id: int
     home_score: float = 0.0
     away_score: float = 0.0
-    result: str = "pending"
     completed_date: Optional[datetime] = None
     is_completed: bool = False
     home_team: Team
     away_team: Team
     games: List[Game] = []
+    
     
     class Config:
         from_attributes = True
@@ -150,12 +150,11 @@ class TournamentUpdate(BaseModel):
 class Tournament(TournamentBase):
     id: int
     status: str = "active"
-    current_round: int = 1
-    total_rounds: int
+    current_round: int = 1    
     created_at: datetime
     updated_at: datetime
     teams: List[Team] = []
-    
+    total_rounds: int     
     class Config:
         from_attributes = True
 
@@ -183,13 +182,6 @@ class BestPlayers(BaseModel):
     tournament: Tournament
     players: List[PlayerStats]
 
-# Authentication schemas
-class LoginRequest(BaseModel):
-    password: str
-
-class LoginResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
 
 class TokenData(BaseModel):
     is_admin: bool = False
@@ -207,7 +199,7 @@ class PlayerResponse(BaseModel):
     points: float
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class PlayerWithStats(BaseModel):
     id: int
@@ -232,7 +224,7 @@ class PlayerWithStats(BaseModel):
     white_win_percentage: float
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class PlayerRanking(BaseModel):
     id: int
@@ -244,12 +236,55 @@ class PlayerRanking(BaseModel):
     rank: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class GameResultSubmit(BaseModel):
     board_number: int
     result: str  # e.g. "1-0", "0-1", "1/2-1/2"
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+class BestPlayer(BaseModel):
+    player_id:          int
+    player_name:        str
+    team_id:            int
+    team_name:          str
+    rating:             int
+    games_played:       int
+    wins:               int
+    draws:              int
+    losses:             int
+    points:             float
+    win_percentage:     float
+    performance_rating: int
+
+class BestPlayersResponse(BaseModel):
+    tournament_id:   int
+    tournament_name: str
+    players:         List[BestPlayer]
+
+
+class PlayerStats(BaseModel):
+    player_id: int
+    player_name: str
+    team_id: int
+    rating: int
+    games_played: int
+    wins: int
+    draws: int
+    losses: int
+    points: float
+    win_percentage: float
+    performance_rating: int
+    position: int
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: dict  # Contains {id, username, is_admin}
+    class Config:
+        from_attributes = True
 class MatchUpdate(BaseModel):
     home_score: Optional[int] = None
     away_score: Optional[int] = None
@@ -267,7 +302,7 @@ class MatchResponse(BaseModel):
     away_score: Optional[int]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class GameResponse(BaseModel):
     id: int
@@ -278,7 +313,7 @@ class GameResponse(BaseModel):
     result: Optional[str]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class MatchWithGamesResponse(MatchResponse):
     games: List[GameResponse]
