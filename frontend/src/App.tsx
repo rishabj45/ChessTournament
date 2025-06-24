@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import Schedule from './components/Schedule';
-import { Standings } from './components/Standings';
+import  Standings  from './components/Standings';
 import Teams from './components/Teams';
 import BestPlayers from './components/BestPlayers';
 import LoginModal from './components/LoginModal';
 import { useAuth } from './hooks/useAuth';
-import api from './services/api';
+import { apiService as api } from './services/api';
 import { Tournament } from './types';
-import { TabType } from './types'; // adjust relative path if needed
-
+import { TabType } from './types';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('schedule');
@@ -64,9 +63,9 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    logout();
-  };
-
+  logout();
+  if (adminMode) toggleAdminMode(); // reset to viewer mode
+};
   const renderTabContent = () => {
     if (loading) {
       return (
@@ -96,13 +95,13 @@ const App: React.FC = () => {
 
     switch (activeTab) {
       case 'schedule':
-        return <Schedule isAdmin={isAuthenticated && adminMode} onUpdate={handleTournamentUpdate} />;
+        return <Schedule isAdmin={isAuthenticated && adminMode} onUpdate={handleTournamentUpdate} tournament={tournament} />;
       case 'standings':
-        return <Standings onUpdate={handleTournamentUpdate} />;
+        return <Standings  />;
       case 'teams':
-        return <Teams isAdmin={isAuthenticated && adminMode} />;
-      case 'best-players':
-        return <BestPlayers onUpdate={handleTournamentUpdate} />;
+        return <Teams isAdmin={isAuthenticated && adminMode} tournament={tournament} />;
+      case 'bestPlayers':
+        return <BestPlayers  />;
       default:
         return null;
     }
@@ -111,11 +110,11 @@ const App: React.FC = () => {
   return (
     <Layout
       currentTab={activeTab}
-      onTabChange={setActiveTab}
+      onTabSelect={setActiveTab}
       tournament={tournament}
+      isAdmin={isAuthenticated && adminMode}
+      onAdminToggle={toggleAdminMode}
       isAuthenticated={isAuthenticated}
-      isAdminMode={adminMode}
-      onToggleAdmin={toggleAdminMode}
       onLoginClick={() => setShowLoginModal(true)}
       onLogout={handleLogout}
     >

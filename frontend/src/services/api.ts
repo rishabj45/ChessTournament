@@ -1,174 +1,91 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
+// frontend/src/services/api.ts
+import axios, { AxiosInstance } from 'axios';
 import {
-  Tournament,
-  Team,
-  Player,
-  Match,
-  TeamStanding,
-  PlayerRanking,
-  LoginRequest,
-  AuthResponse,
-  CreateTournamentForm,
-  CreateTeamForm,
-  CreatePlayerForm,
-  UpdatePlayerForm,
-  MatchResultForm,
-} from '../types';
-
-interface ImportMetaEnv {
-  readonly VITE_API_URL?: string;
-}
-
-declare global {
-  interface ImportMeta {
-    readonly env: ImportMetaEnv;
-  }
-}
+  Tournament, Team, Player, MatchResponse, StandingsResponse, BestPlayersResponse,
+  LoginRequest, AuthResponse
+} from '@/types';
 
 class ApiService {
-  private api: AxiosInstance;
-
+  private client: AxiosInstance;
+  
   constructor() {
-    this.api = axios.create({
-      baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-      timeout: 10000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    this.client = axios.create({ baseURL: '/api' });
+    this.client.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`; // ✅ attach token
+  }
+  return config;
+});
 
-    this.api.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem('access_token');
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
-
-    this.api.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('user');
-          window.location.reload();
-        }
-        return Promise.reject(error);
-      }
-    );
+  }
+  
+  // -- Authentication --
+  async login(data: LoginRequest): Promise<AuthResponse> {
+    const res = await this.client.post('/auth/login', data);
+    return res.data;
   }
 
-  private async request<T>(
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
-    url: string,
-    data?: any
-  ): Promise<T> {
-    const response: AxiosResponse<T> = await this.api.request({
-      method,
-      url,
-      data,
-    });
-    return response.data;
-  }
-
-  // ✅ Authentication
-  async login(credentials: LoginRequest): Promise<AuthResponse> {
-    return this.request('POST', '/api/auth/login', credentials);
-  }
-
-  async verifyToken(): Promise<{ valid: boolean }> {
-    return this.request('POST', '/api/auth/verify-token');
-  }
-
-  async logout(): Promise<void> {
-    return this.request('POST', '/api/auth/logout');
-  }
-
-  // ✅ Tournaments
-  async getTournaments(): Promise<Tournament[]> {
-    return this.request('GET', '/api/tournaments');
-  }
-
+  // -- Tournaments --
   async getCurrentTournament(): Promise<Tournament> {
-    return this.request('GET', '/api/tournaments/current');
+    const res = await this.client.get('/tournaments/current');
+    return res.data;
+  }
+  async getTournaments(): Promise<Tournament[]> {
+    const res = await this.client.get('/tournaments');
+    return res.data;
+  }
+  async createTournament(data: any): Promise<Tournament> {
+    const res = await this.client.post('/tournaments', data);
+    return res.data;
   }
 
-  async createTournament(tournament: CreateTournamentForm): Promise<Tournament> {
-    return this.request('POST', '/api/tournaments', tournament);
-  }
-
-  async updateTournament(id: number, updates: Partial<Tournament>): Promise<Tournament> {
-    return this.request('PUT', `/api/tournaments/${id}`, updates);
-  }
-
-  // ✅ Teams
+  // -- Teams --
   async getTeams(): Promise<Team[]> {
-    return this.request('GET', '/api/teams');
+    const res = await this.client.get('/teams');
+    return res.data;
+  }
+  async createTeam(team: Team): Promise<Team> {
+    const res = await this.client.post('/teams', team);
+    return res.data;
+  }
+  async updateTeam(teamId: number, team: Team): Promise<Team> {
+    const res = await this.client.put(`/teams/${teamId}`, team);
+    return res.data;
   }
 
-  async createTeam(team: CreateTeamForm): Promise<Team> {
-    return this.request('POST', '/api/teams', team);
-  }
-
-  async updateTeam(id: number, updates: Partial<Team>): Promise<Team> {
-    return this.request('PUT', `/api/teams/${id}`, updates);
-  }
-
-  async deleteTeam(id: number): Promise<void> {
-    return this.request('DELETE', `/api/teams/${id}`);
-  }
-
-  // ✅ Players
+  // -- Players (example) --
   async getPlayers(): Promise<Player[]> {
-    return this.request('GET', '/api/players');
+    const res = await this.client.get('/players');
+    return res.data;
   }
 
-  async getPlayersByTeam(teamId: number): Promise<Player[]> {
-    return this.request('GET', `/api/teams/${teamId}/players`);
-  }
+  // -- Matches --
+async getMatches(roundId: number): Promise<MatchResponse[]> {
+  const res = await this.client.get(`/matches/${roundId}`);
+  return res.data;
+}
 
-  async getPlayerRankings(tournamentId: number): Promise<PlayerRanking[]> {
-    return this.request('GET', `/api/tournaments/${tournamentId}/best-players`);
-  }
+async submitBoardResult(
+  matchId: number,
+  boardNumber: number,
+  resultPayload: { result: string }
+): Promise<void> {
+  await this.client.post(`/matches/${matchId}/board/${boardNumber}/result`, resultPayload);
+}
 
-  async createPlayer(player: CreatePlayerForm): Promise<Player> {
-    return this.request('POST', '/api/players', player);
-  }
+  // -- Standings & Best Players --
+  async getStandings(): Promise<StandingsResponse> {
+    const tournament = await this.getCurrentTournament();
+    const res = await this.client.get(`/tournaments/${tournament.id}/standings`);
 
-  async updatePlayer(id: number, updates: UpdatePlayerForm): Promise<Player> {
-    return this.request('PUT', `/api/players/${id}`, updates);
+    return res.data;
   }
-
-  async deletePlayer(id: number): Promise<void> {
-    return this.request('DELETE', `/api/players/${id}`);
-  }
-
-  // ✅ Matches
-  async getMatches(): Promise<Match[]> {
-    return this.request('GET', '/api/matches');
-  }
-
-  async getMatchSchedule(tournamentId: number): Promise<Match[]> {
-    return this.request('GET', `/api/matches/tournament/${tournamentId}/schedule`);
-  }
-
-  async submitMatchResults(matchId: number, data: MatchResultForm): Promise<Match> {
-    return this.request('POST', `/api/matches/${matchId}/submit-results`, data);
-  }
-
-  // ✅ Standings
-  async getStandings(tournamentId: number): Promise<TeamStanding[]> {
-    return this.request('GET', `/api/tournaments/${tournamentId}/standings`);
-  }
-
-  // ✅ Health check
-  async healthCheck(): Promise<{ status: string }> {
-    return this.request('GET', '/health');
+  async getBestPlayers(): Promise<BestPlayersResponse> {
+    const tournament = await this.getCurrentTournament();
+    const res = await this.client.get(`/tournaments/${tournament.id}/best-players`);
+    return res.data;
   }
 }
 
 export const apiService = new ApiService();
-export default apiService;

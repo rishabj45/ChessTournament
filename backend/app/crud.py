@@ -1,41 +1,50 @@
+### backend/app/crud.py
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, and_
 from typing import List, Optional
-from . import models, schemas
-from .tournament_logic import create_tournament_structure, calculate_standings, update_match_result, get_best_players
 from fastapi import HTTPException
-# Tournament CRUD
+from . import models, schemas
+from .tournament_logic import create_tournament_structure, calculate_standings
+
+# -- Tournament CRUD --
 def get_tournament(db: Session, tournament_id: int) -> Optional[models.Tournament]:
     return db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
 
 def get_current_tournament(db: Session) -> Optional[models.Tournament]:
-    return (
-        db.query(models.Tournament)
-        .order_by(models.Tournament.created_at.desc())
-        .first()
-    )
-
+    """
+    Get the most recently created tournament.
+    """
+    return db.query(models.Tournament).order_by(models.Tournament.created_at.desc()).first()
 
 def get_tournaments(db: Session, skip: int = 0, limit: int = 100) -> List[models.Tournament]:
     return db.query(models.Tournament).offset(skip).limit(limit).all()
 
 def create_tournament(db: Session, tournament: schemas.TournamentCreate) -> models.Tournament:
+    """
+    Create full tournament structure.
+    """
     return create_tournament_structure(db, tournament)
 
 def update_tournament(db: Session, tournament_id: int, tournament_update: schemas.TournamentUpdate) -> Optional[models.Tournament]:
-    tournament = get_tournament(db, tournament_id)
-    if not tournament:
+    tour = get_tournament(db, tournament_id)
+    if not tour:
         return None
-    
-    update_data = tournament_update.dict(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(tournament, field, value)
-    
+    data = tournament_update.dict(exclude_unset=True)
+    for field, value in data.items():
+        setattr(tour, field, value)
     db.commit()
-    db.refresh(tournament)
-    return tournament
+    db.refresh(tour)
+    return tour
 
-# Team CRUD
+def delete_tournament(db: Session, tournament_id: int) -> bool:
+    tour = get_tournament(db, tournament_id)
+    if not tour:
+        return False
+    db.delete(tour)
+    db.commit()
+    return True
+
+# -- Team CRUD --
 def get_team(db: Session, team_id: int) -> Optional[models.Team]:
     return db.query(models.Team).filter(models.Team.id == team_id).first()
 
@@ -51,24 +60,14 @@ def create_team(db: Session, team: schemas.TeamCreate) -> models.Team:
     db.commit()
     db.refresh(db_team)
     return db_team
-def map_frontend_result(result: str) -> str:
-    if result == '1-0':
-        return 'white_win'
-    elif result == '0-1':
-        return 'black_win'
-    elif result == '1/2-1/2':
-        return 'draw'
-    else:
-        raise HTTPException(status_code=400, detail=f"Invalid result: {result}")
+
 def update_team(db: Session, team_id: int, team_update: schemas.TeamUpdate) -> Optional[models.Team]:
     team = get_team(db, team_id)
     if not team:
         return None
-    
-    update_data = team_update.dict(exclude_unset=True)
-    for field, value in update_data.items():
+    data = team_update.dict(exclude_unset=True)
+    for field, value in data.items():
         setattr(team, field, value)
-    
     db.commit()
     db.refresh(team)
     return team
@@ -77,41 +76,28 @@ def delete_team(db: Session, team_id: int) -> bool:
     team = get_team(db, team_id)
     if not team:
         return False
-    
     db.delete(team)
     db.commit()
     return True
 
-# Player CRUD
+# -- Player CRUD --
 def get_player(db: Session, player_id: int) -> Optional[models.Player]:
     return db.query(models.Player).filter(models.Player.id == player_id).first()
 
-# in app/crud.py
-def get_players(
-    db: Session,
-    team_id: Optional[int] = None,
-    tournament_id: Optional[int] = None,
-    skip: int = 0,
-    limit: int = 100
-) -> List[models.Player]:
+def get_players(db: Session, team_id: Optional[int] = None, tournament_id: Optional[int] = None) -> List[models.Player]:
     query = db.query(models.Player)
     if team_id:
         query = query.filter(models.Player.team_id == team_id)
-    elif tournament_id:
+    if tournament_id:
         query = query.join(models.Team).filter(models.Team.tournament_id == tournament_id)
-    return query.offset(skip).limit(limit).all()
+    return query.all()
 
+def get_player_by_name_in_team(db: Session, name: str, team_id: int) -> Optional[models.Player]:
+    return db.query(models.Player).filter(
+        and_(models.Player.team_id == team_id, models.Player.name == name)
+    ).first()
 
 def create_player(db: Session, player: schemas.PlayerCreate) -> models.Player:
-    # Check team player limit
-    team = get_team(db, player.team_id)
-    if not team:
-        raise ValueError("Team not found")
-    
-    player_count = db.query(models.Player).filter(models.Player.team_id == player.team_id).count()
-    if player_count >= 6:
-        raise HTTPException(status_code=400, detail="Team cannot have more than 6 players")
-    
     db_player = models.Player(**player.dict())
     db.add(db_player)
     db.commit()
@@ -122,11 +108,9 @@ def update_player(db: Session, player_id: int, player_update: schemas.PlayerUpda
     player = get_player(db, player_id)
     if not player:
         return None
-    
-    update_data = player_update.dict(exclude_unset=True)
-    for field, value in update_data.items():
+    data = player_update.dict(exclude_unset=True)
+    for field, value in data.items():
         setattr(player, field, value)
-    
     db.commit()
     db.refresh(player)
     return player
@@ -135,164 +119,131 @@ def delete_player(db: Session, player_id: int) -> bool:
     player = get_player(db, player_id)
     if not player:
         return False
-    
-    # Check minimum team size
-    team_player_count = db.query(models.Player).filter(models.Player.team_id == player.team_id).count()
-    if team_player_count <= 4:
-        raise HTTPException(status_code=400, detail="Team must have at least 4 players")
-    
     db.delete(player)
     db.commit()
     return True
 
-# Match CRUD
+def adjust_player_positions_after_deletion(db: Session, team_id: int, deleted_position: int):
+    """
+    Shift up player positions after deletion.
+    """
+    players = db.query(models.Player).filter(models.Player.team_id == team_id).order_by(models.Player.position).all()
+    for p in players:
+        if p.position > deleted_position:
+            p.position -= 1
+    db.commit()
+
+# -- Match/Result CRUD --
 def get_match(db: Session, match_id: int) -> Optional[models.Match]:
     return db.query(models.Match).filter(models.Match.id == match_id).first()
 
-def get_matches(db: Session, tournament_id: Optional[int] = None, round_number: Optional[int] = None) -> List[models.Match]:
+def get_matches(db: Session, round_id: Optional[int] = None, tournament_id: Optional[int] = None) -> List[models.Match]:
     query = db.query(models.Match)
-    
+    if round_id:
+        query = query.filter(models.Match.round_id == round_id)
     if tournament_id:
         query = query.filter(models.Match.tournament_id == tournament_id)
-    if round_number:
-        query = query.filter(models.Match.round_number == round_number)
-    
-    return query.order_by(models.Match.round_number, models.Match.id).all()
+    return query.all()
 
-def submit_match_result(db: Session, match_id: int, game_results: List[dict]) -> Optional[models.Match]:
+
+def update_match_result(db: Session, match_id: int, game_results: List[dict]) -> dict:
     match = get_match(db, match_id)
     if not match:
-        return None
-    
-    # Validate game results format
-    for result in game_results:
-        result['result'] = map_frontend_result(result['result'])
+        raise HTTPException(status_code=404, detail="Match not found")
+    white_score = 0.0
+    black_score = 0.0
 
-# Round CRUD
-def get_round(db: Session, round_id: int) -> Optional[models.Round]:
-    return db.query(models.Round).filter(models.Round.id == round_id).first()
-
-def get_rounds(db: Session, tournament_id: int) -> List[models.Round]:
-    return db.query(models.Round).filter(
-        models.Round.tournament_id == tournament_id
-    ).order_by(models.Round.round_number).all()
-
-# Game CRUD
-def get_game(db: Session, game_id: int) -> Optional[models.Game]:
-    return db.query(models.Game).filter(models.Game.id == game_id).first()
-
-def get_games(db: Session, match_id: int) -> List[models.Game]:
-    return db.query(models.Game).filter(
-        models.Game.match_id == match_id
-    ).order_by(models.Game.board_number).all()
-
-# Standings and Statistics
-def get_tournament_standings(db: Session, tournament_id: int) -> List[dict]:
-    return calculate_standings(db, tournament_id)
-
-def get_tournament_best_players(db: Session, tournament_id: int) -> List[dict]:
-    return get_best_players(db, tournament_id)
-
-# Utility functions
-def get_team_players_by_rating(db: Session, team_id: int, limit: int = 4) -> List[models.Player]:
-    """Get top players from a team ordered by rating"""
-    return db.query(models.Player).filter(
-        models.Player.team_id == team_id
-    ).order_by(desc(models.Player.rating), models.Player.board_order).limit(limit).all()
-
-def get_next_matches(db: Session, tournament_id: int, limit: int = 10) -> List[models.Match]:
-    """Get upcoming matches"""
-    return db.query(models.Match).filter(
-        models.Match.tournament_id == tournament_id,
-        models.Match.is_completed == False
-    ).order_by(models.Match.scheduled_date).limit(limit).all()
-
-def get_recent_results(db: Session, tournament_id: int, limit: int = 10) -> List[models.Match]:
-    """Get recently completed matches"""
-    return db.query(models.Match).filter(
-        models.Match.tournament_id == tournament_id,
-        models.Match.is_completed == True
-    ).order_by(desc(models.Match.completed_date)).limit(limit).all()
-
-
-# ... (existing CRUD functions for Tournament, Team, Player, Match, Round, Game) ...
-
-# Add missing functions for matches and games
-
-def get_match_with_games(db: Session, match_id: int) -> Optional[models.Match]:
-    """Get a specific match including all games."""
-    match = db.query(models.Match).filter(models.Match.id == match_id).first()
-    return match
-
-def get_tournament_matches(db: Session, tournament_id: int, round_number: Optional[int] = None) -> List[models.Match]:
-    """Get all matches for a tournament, optionally filtered by round."""
-    query = db.query(models.Match).filter(models.Match.tournament_id == tournament_id)
-    if round_number is not None:
-        query = query.filter(models.Match.round_number == round_number)
-    return query.order_by(models.Match.round_number, models.Match.id).all()
-
-def get_completed_matches(db: Session, tournament_id: int) -> List[models.Match]:
-    """Get all completed matches for a tournament."""
-    return db.query(models.Match).filter(
-        models.Match.tournament_id == tournament_id,
-        models.Match.is_completed == True
-    ).all()
-
-def update_game_result(db: Session, game_id: int, result: Optional[str]) -> Optional[models.Game]:
-    """Update result for a single game."""
-    game = db.query(models.Game).filter(models.Game.id == game_id).first()
-    if not game:
-        return None
-    if result is None:
-        # Reset game to pending
-        game.result = None
-        game.white_score = 0.0
-        game.black_score = 0.0
-        game.is_completed = False
-    else:
-        # Interpret '1-0', '0-1', '1/2-1/2'
-        if result == '1-0':
-            game.white_score = 1.0
-            game.black_score = 0.0
-            game.result = '1-0'
-        elif result == '0-1':
-            game.white_score = 0.0
-            game.black_score = 1.0
-            game.result = '0-1'
-        elif result == '1/2-1/2':
-            game.white_score = 0.5
-            game.black_score = 0.5
-            game.result = '1/2-1/2'
+    for res in game_results:
+        game = db.query(models.Game).filter(
+            models.Game.match_id == match_id,
+            models.Game.board_number == res["board_number"]
+        ).first()
+        if not game:
+            continue
+        game.result = res["result"]
         game.is_completed = True
+        if res["result"] == "white_win":
+            game.white_score, game.black_score = 1.0, 0.0
+        elif res["result"] == "black_win":
+            game.white_score, game.black_score = 0.0, 1.0
+        else:
+            game.white_score = game.black_score = 0.5
+        if game.white_player.team_id == match.white_team_id:
+            white_score += game.white_score
+            black_score += game.black_score
+        else:
+            white_score += game.black_score
+            black_score += game.white_score
+        update_player_stats(db, game.white_player_id, game.white_score)
+        update_player_stats(db, game.black_player_id, game.black_score)
+
+    match.white_score = white_score
+    match.black_score = black_score
+    match.is_completed = True
+    match.completed_date = models.func.now()
+    if white_score > black_score:
+        match.result = "white_win"
+    elif black_score > white_score:
+        match.result = "black_win"
+    else:
+        match.result = "draw"
+
     db.commit()
-    db.refresh(game)
-    return game
+    calculate_standings(db, match.tournament_id)
 
-# ... (rest of CRUD functions) ...
+    # Check round completion
+    round_matches = db.query(models.Match).filter(models.Match.round_id == match.round_id).all()
+    if all(m.is_completed for m in round_matches):
+        match.round.is_completed = True
+        db.commit()
+        completed = db.query(models.Round).filter(
+            models.Round.tournament_id == match.tournament_id,
+            models.Round.is_completed == True
+        ).count()
+        tournament = get_tournament(db, match.tournament_id)
+        if tournament:
+            tournament.current_round = completed + 1
+            db.commit()
 
-def get_tournament_progress(db: Session, tournament_id: int) -> dict:
-    """Get tournament progress statistics"""
-    tournament = get_tournament(db, tournament_id)
-    if not tournament:
-        return {}
-    
-    total_matches = db.query(models.Match).filter(models.Match.tournament_id == tournament_id).count()
-    completed_matches = db.query(models.Match).filter(
-        models.Match.tournament_id == tournament_id,
-        models.Match.is_completed == True
-    ).count()
-    
-    completed_rounds = db.query(models.Round).filter(
-        models.Round.tournament_id == tournament_id,
-        models.Round.is_completed == True
-    ).count()
-    
-    return {
-        'tournament': tournament,
-        'total_matches': total_matches,
-        'completed_matches': completed_matches,
-        'completion_percentage': (completed_matches / total_matches * 100) if total_matches > 0 else 0,
-        'current_round': tournament.current_round,
-        'total_rounds': tournament.total_rounds,
-        'completed_rounds': completed_rounds
-    }
+    return {"message": "Match result updated successfully"}
+
+def update_player_stats(db: Session, player_id: int, score: float):
+    player = get_player(db, player_id)
+    if not player:
+        return
+    player.games_played += 1
+    player.points += score
+    if score == 1.0:
+        player.wins += 1
+    elif score == 0.5:
+        player.draws += 1
+    else:
+        player.losses += 1
+
+def get_best_players(db: Session, tournament_id: int) -> List[dict]:
+    tour = get_tournament(db, tournament_id)
+    if not tour:
+        return []
+    stats = []
+    for team in tour.teams:
+        for p in team.players:
+            total = p.wins + p.draws + p.losses
+            win_pct = (p.points / total * 100) if total else 0
+            perf = p.rating + int((p.points / total - 0.5) * 400) if total else p.rating
+            stats.append({
+                "player_id": p.id,
+                "player_name": p.name,
+                "team_id": team.id,
+                "rating": p.rating,
+                "games_played": total,
+                "wins": p.wins,
+                "draws": p.draws,
+                "losses": p.losses,
+                "points": p.points,
+                "win_percentage": win_pct,
+                "performance_rating": perf
+            })
+    stats.sort(key=lambda x: (-x["wins"], -x["win_percentage"], -x["rating"]))
+    for idx, row in enumerate(stats, start=1):
+        row["position"] = idx
+    return stats
