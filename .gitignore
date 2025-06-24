@@ -18,6 +18,7 @@ project_dump.txt
 project_tree.txt
 dump_content.py
 database_management_guide.txt
+dump_db.py
 
 # === Node / React Frontend ===
 frontend/node_modules/

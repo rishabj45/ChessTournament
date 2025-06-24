@@ -95,7 +95,27 @@ class MatchCreate(MatchBase):
 
 class MatchResult(BaseModel):
     games: List[GameResult]
+class RoundBase(BaseModel):
+    round_number: int
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
 
+class RoundCreate(RoundBase):
+    tournament_id: int
+
+class Round(RoundBase):
+    id: int
+    tournament_id: int
+    is_completed: bool = False
+    created_at: datetime
+    matches: List['Match'] = []
+
+    class Config:
+        orm_mode = True
+
+class RoundUpdate(BaseModel):
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
 class Match(MatchBase):
     id: int
     tournament_id: int

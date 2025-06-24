@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, Eye, Edit } from 'lucide-react';
+import { Calendar, Clock, Users, Eye, Edit, Check, X } from 'lucide-react';
 import MatchResult from './MatchResult';
 import { apiService } from '@/services/api';
 
@@ -18,6 +18,7 @@ interface Game {
 interface Match {
   id: number;
   round_number: number;
+  round_id: number;
   white_team_id: number;
   white_team_name: string;
   black_team_id: number;
@@ -31,7 +32,6 @@ interface Match {
 
 interface ScheduleProps {
   isAdmin: boolean;
-  onUpdate: () => Promise<void>;
 }
 
 const Schedule: React.FC<ScheduleProps> = ({ isAdmin }) => {
@@ -39,36 +39,33 @@ const Schedule: React.FC<ScheduleProps> = ({ isAdmin }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [selectedRound, setSelectedRound] = useState<number | 'all'>('all');
+  const [editingRoundId, setEditingRoundId] = useState<number | null>(null);
+  const [newRoundDate, setNewRoundDate] = useState<string>('');
 
-  // frontend/src/components/Schedule.tsx (excerpt)
+  useEffect(() => {
+    fetchMatches();
+  }, []);
 
-useEffect(() => {
-  fetchMatches();
-}, []);
+  const fetchMatches = async () => {
+    try {
+      setLoading(true);
+      const current = await apiService.getCurrentTournament();
+      if (!current || !current.id) {
+        throw new Error('No active tournament found.');
+      }
 
-const fetchMatches = async () => {
-  try {
-    setLoading(true);
-    const current = await apiService.getCurrentTournament();
-    if (!current || !current.id) {
-      throw new Error('No active tournament found.');
+      const response = await fetch(`/api/matches/tournament/${current.id}/schedule`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch matches');
+      }
+      const data = await response.json();
+      setMatches(data.schedule);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
     }
-
-    const response = await fetch(`/api/matches/tournament/${current.id}/schedule`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch matches');
-    }
-    const data = await response.json();
-    // data.schedule now contains the array of matches with team and player names
-    setMatches(data.schedule);
-  } catch (err) {
-    setError(err instanceof Error ? err.message : 'An error occurred');
-  } finally {
-    setLoading(false);
-  }
-};
-
+  };
 
   const handleSaveMatchResult = async (
     matchId: number,
@@ -91,15 +88,15 @@ const fetchMatches = async () => {
     }
   };
 
-const getMatchStatus = (match: Match) => {
-  const games = match.games || []; // ✅ Fallback
-  const completedGames = games.filter(game => game.result).length;
-  const totalGames = games.length;
+  const getMatchStatus = (match: Match) => {
+    const games = match.games || [];
+    const completedGames = games.filter(game => game.result).length;
+    const totalGames = games.length;
 
-  if (completedGames === 0) return 'Not Started';
-  if (completedGames === totalGames) return 'Completed';
-  return 'In Progress';
-};
+    if (completedGames === 0) return 'Not Started';
+    if (completedGames === totalGames) return 'Completed';
+    return 'In Progress';
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -122,13 +119,46 @@ const getMatchStatus = (match: Match) => {
     return whiteScore > blackScore ? `${match.white_team_name} Wins` : `${match.black_team_name} Wins`;
   };
 
-  const filteredMatches =
-    selectedRound === 'all'
-      ? matches
-      : matches.filter(match => match.round_number === selectedRound);
-
   const rounds = [...new Set(matches.map(match => match.round_number))].sort((a, b) => a - b);
 
+  const handleEditRound = (roundId: number, date: string) => {
+    // Convert to local datetime-local format
+    const dt = new Date(date);
+    const tzOffset = dt.getTimezoneOffset();
+    const localDt = new Date(dt.getTime() - tzOffset * 60000);
+    const isoLocal = localDt.toISOString().slice(0, 16);
+    setNewRoundDate(isoLocal);
+    setEditingRoundId(roundId);
+  };
+
+  const handleSaveRound = async (roundId: number) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      // Construct date from newRoundDate as local time
+      const [datePart, timePart] = newRoundDate.split('T');
+      const [year, month, day] = datePart.split('-').map(Number);
+      const [hour, minute] = timePart.split(':').map(Number);
+      const newDateObj = new Date(year, month - 1, day, hour, minute);
+      const isoString = newDateObj.toISOString();
+
+      const res = await fetch(`/api/rounds/${roundId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ start_date: isoString })
+      });
+      if (!res.ok) {
+        throw new Error('Failed to update round time');
+      }
+      setEditingRoundId(null);
+      await fetchMatches();
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    }
+  };
 
   if (loading) {
     return (
@@ -154,149 +184,157 @@ const getMatchStatus = (match: Match) => {
 
   return (
     <div className="space-y-6">
-      {/* Filter Controls */}
-      <div className="bg-white rounded-lg shadow-md p-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Filter by Round:</span>
-          </div>
-          <select
-            value={selectedRound}
-            onChange={(e) => setSelectedRound(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">All Rounds</option>
-            {rounds.map(round => (
-              <option key={round} value={round}>Round {round}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Matches List */}
-      <div className="space-y-4">
-        {filteredMatches.map((match) => {
-  const status = getMatchStatus(match);
-  const isCompleted = status === 'Completed';
-  const games = match.games || [];
-          
-          return (
-            <div key={match.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-              {/* Match Header */}
-              <div className="bg-gray-50 px-6 py-3 border-b">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <h3 className="font-semibold text-gray-800">
-                      Round {match.round_number}
-                    </h3>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Calendar className="w-4 h-4" />
-                      {new Date(match.scheduled_date).toLocaleDateString()}
-                      <Clock className="w-4 h-4 ml-2" />
-                      {new Date(match.scheduled_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
-                      {status}
-                    </span>
-                    <button
-                      onClick={() => setSelectedMatch(match)}
-                      className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
-                    >
-                      {isAdmin ? <Edit className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      {isAdmin ? 'Edit' : 'View'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Team Matchup */}
-              <div className="px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-6 h-6 bg-white border-2 border-gray-400 rounded"></div>
-                    <div>
-                      <h4 className="font-semibold text-gray-800">{match.white_team_name}</h4>
-                      <p className="text-sm text-gray-600">White</p>
-                    </div>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="text-xl font-bold text-gray-800">
-                      {match.white_team_score} - {match.black_team_score}
-                    </div>
-                    {isCompleted && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        {getMatchResult(match)}
-                      </p>
+      {rounds.map((round) => {
+        const roundMatches = matches.filter(match => match.round_number === round);
+        if (roundMatches.length === 0) return null;
+        const roundDate = roundMatches[0].scheduled_date;
+        const roundId = roundMatches[0].round_id;
+        return (
+          <div key={round}>
+            <div className="bg-gray-50 px-6 py-3 border-b">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <h3 className="font-semibold text-gray-800">Round {round}</h3>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Calendar className="w-4 h-4" />
+                    {editingRoundId === roundId ? (
+                      <input
+                        type="datetime-local"
+                        value={newRoundDate}
+                        onChange={(e) => setNewRoundDate(e.target.value)}
+                        className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <>
+                        {new Date(roundDate).toLocaleDateString()}
+                        <Clock className="w-4 h-4 ml-2" />
+                        {new Date(roundDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </>
                     )}
                   </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <div>
-                      <h4 className="font-semibold text-gray-800 text-right">{match.black_team_name}</h4>
-                      <p className="text-sm text-gray-600 text-right">Black</p>
-                    </div>
-                    <div className="w-6 h-6 bg-gray-800 rounded"></div>
-                  </div>
                 </div>
-              </div>
-
-              {/* Board Results Preview */}
-              <div className="px-6 pb-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {games.map((game) => (
-                    <div key={game.id} className="bg-gray-50 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium text-gray-600">
-                          Board {game.board_number}
-                        </span>
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          game.result 
-                            ? game.result === '1-0' 
-                              ? 'bg-green-100 text-green-800' 
-                              : game.result === '0-1'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-200 text-gray-600'
-                        }`}>
-                          {game.result || 'TBD'}
-                        </span>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center text-xs">
-                          <div className="w-2 h-2 bg-white border border-gray-400 rounded mr-2"></div>
-                          <span className="truncate">{game.white_player_name}</span>
-                        </div>
-                        <div className="flex items-center text-xs">
-                          <div className="w-2 h-2 bg-gray-800 rounded mr-2"></div>
-                          <span className="truncate">{game.black_player_name}</span>
-                        </div>
-                      </div>
+                {isAdmin && (
+                  editingRoundId === roundId ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleSaveRound(roundId)}
+                        className="p-2 bg-green-100 text-green-600 rounded hover:bg-green-200"
+                      >
+                        <Check className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => setEditingRoundId(null)}
+                        className="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  ) : (
+                    <button
+                      onClick={() => handleEditRound(roundId, roundDate)}
+                      className="p-2 text-gray-500 hover:text-gray-700"
+                    >
+                      <Edit className="w-5 h-5" />
+                    </button>
+                  )
+                )}
               </div>
             </div>
-          );
-        })}
-      </div>
-
-      {filteredMatches.length === 0 && (
+            <div className="space-y-4 mt-2">
+              {roundMatches.map((match) => {
+                const status = getMatchStatus(match);
+                const isCompleted = status === 'Completed';
+                const games = match.games || [];
+                return (
+                  <div key={match.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div className="px-6 py-2 border-b flex justify-between items-center">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+                        {status}
+                      </span>
+                      <button
+                        onClick={() => setSelectedMatch(match)}
+                        className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        {isAdmin ? <Edit className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {isAdmin ? 'Edit' : 'View'}
+                      </button>
+                    </div>
+                    <div className="px-6 py-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-6 h-6 bg-white border-2 border-gray-400 rounded"></div>
+                          <div>
+                            <h4 className="font-semibold text-gray-800">{match.white_team_name}</h4>
+                            <p className="text-sm text-gray-600">White</p>
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xl font-bold text-gray-800">
+                            {match.white_team_score} - {match.black_team_score}
+                          </div>
+                          {isCompleted && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              {getMatchResult(match)}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div>
+                            <h4 className="font-semibold text-gray-800 text-right">{match.black_team_name}</h4>
+                            <p className="text-sm text-gray-600 text-right">Black</p>
+                          </div>
+                          <div className="w-6 h-6 bg-gray-800 rounded"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="px-6 pb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                        {games.map((game) => (
+                          <div key={game.id} className="bg-gray-50 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-gray-600">
+                                Board {game.board_number}
+                              </span>
+                              <span className={`text-xs px-2 py-1 rounded ${
+                                game.result
+                                  ? game.result === '1-0'
+                                    ? 'bg-green-100 text-green-800'
+                                    : game.result === '0-1'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-gray-200 text-gray-600'
+                              }`}>
+                                {game.result || 'TBD'}
+                              </span>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center text-xs">
+                                <div className="w-2 h-2 bg-white border border-gray-400 rounded mr-2"></div>
+                                <span className="truncate">{game.white_player_name}</span>
+                              </div>
+                              <div className="flex items-center text-xs">
+                                <div className="w-2 h-2 bg-gray-800 rounded mr-2"></div>
+                                <span className="truncate">{game.black_player_name}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+      {matches.length === 0 && (
         <div className="text-center py-12 bg-white rounded-lg shadow-md">
           <Users className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No matches found</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {selectedRound === 'all' 
-              ? 'No matches have been scheduled yet.' 
-              : `No matches found for Round ${selectedRound}.`}
-          </p>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No matches scheduled</h3>
+          <p className="mt-1 text-sm text-gray-500">No matches have been scheduled yet.</p>
         </div>
       )}
-
-      {/* Match Result Modal */}
       {selectedMatch && (
         <MatchResult
           match={selectedMatch}
@@ -309,4 +347,4 @@ const getMatchStatus = (match: Match) => {
   );
 };
 
-export default Schedule; 
+export default Schedule;

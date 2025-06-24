@@ -10,7 +10,7 @@ import uvicorn
 from sqlalchemy import text
 
 from .database import engine, Base
-from .api import  tournaments, teams, players, matches
+from .api import  tournaments, teams, players, matches , rounds
 from . import auth
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ app.include_router(tournaments.router, tags=["Tournaments"])
 app.include_router(teams.router,  tags=["Teams"])
 app.include_router(players.router, tags=["Players"])
 app.include_router(matches.router, tags=["Matches"])
-
+app.include_router(rounds.router, tags=["Rounds"])
 # --- Health & Root ---
 @app.get("/health")
 def health(): return {"status": "healthy"}
