@@ -137,17 +137,12 @@ class StandingsResponse(BaseModel):
 class BestPlayerEntry(BaseModel):
     player_id: int
     player_name: str
-    team_id: int
-    rating: int
     games_played: int
     wins: int
     draws: int
     losses: int
     points: float
-    win_percentage: float
-    performance_rating: int
-    position: int
-
+    
 class BestPlayersResponse(BaseModel):
     tournament_id: int
     tournament_name: str

@@ -10,19 +10,6 @@ from .. import crud
 
 router = APIRouter(prefix="/api/players", tags=["players"])
 
-@router.get("/{tournament_id}/best-players", response_model=BestPlayersResponse)
-def best_players(tournament_id: int, db: Session = Depends(get_db)):
-    """Get best players of a tournament."""
-    tour = crud.get_tournament(db, tournament_id)
-    if not tour:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tournament not found")
-    stats = crud.get_best_players(db, tournament_id)
-    return BestPlayersResponse(
-        tournament_id=tournament_id,
-        tournament_name=tour.name,
-        players=stats
-    )
-
 @router.get("/", response_model=List[PlayerResponse])
 def list_players(team_id: Optional[int] = None, tournament_id: Optional[int] = None,
                  db: Session = Depends(get_db)):

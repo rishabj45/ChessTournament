@@ -96,16 +96,11 @@ export interface StandingsResponse {
 export interface BestPlayerEntry {
   player_id: number;
   player_name: string;
-  team_id: number;
-  rating: number;
   games_played: number;
   wins: number;
   draws: number;
   losses: number;
   points: number;
-  win_percentage: number;
-  performance_rating: number;
-  position: number;
 }
 
 export interface BestPlayersResponse {

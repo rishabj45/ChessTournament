@@ -14,7 +14,7 @@ const MatchResult: React.FC<MatchResultProps> = ({ match, onClose }) => {
   const [results, setResults] = useState<{ board: number; result: string }[]>(
   match.games.map((g) => ({
     board: g.board_number,
-    result: g.result
+    result: g.result || "pending"
   }))
 );
 
@@ -22,7 +22,7 @@ const MatchResult: React.FC<MatchResultProps> = ({ match, onClose }) => {
   try {
     for (const r of results) {
       if (r.result !== "pending") {
-        await apiService.submitBoardResult(match.id, r.board, { 'result': r.result });
+        await apiService.submitBoardResult(match.id, r.board, { result: r.result });
       }
     }
     onClose();

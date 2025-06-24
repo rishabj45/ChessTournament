@@ -7,7 +7,7 @@ from ..database import get_db
 from ..auth_utils import get_current_user
 from ..schemas import TournamentResponse, TournamentCreate, TournamentUpdate, StandingsResponse, BestPlayersResponse
 from .. import crud
-
+from .. import tournament_logic 
 router = APIRouter(prefix="/api/tournaments", tags=["tournaments"])
 
 @router.get("/current", response_model=Optional[TournamentResponse])
@@ -55,7 +55,7 @@ def get_standings(tournament_id: int, db: Session = Depends(get_db)):
     tour = crud.get_tournament(db, tournament_id)
     if not tour:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tournament not found")
-    standings = crud.calculate_standings(db, tournament_id)
+    standings = tournament_logic.calculate_standings(db, tournament_id)
     return StandingsResponse(standings=standings)
 
 @router.get("/{tournament_id}/best-players", response_model=BestPlayersResponse)

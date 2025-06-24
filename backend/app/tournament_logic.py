@@ -81,17 +81,11 @@ def create_tournament_structure(db: Session,data: schemas.TournamentCreate):
     db.commit()
     return tour
 
-
-
-def calculate_standings(db: Session, tournament_id: int) -> List[dict]:
-    """
-    Update team standings (match/game points, Sonneborn-Berger).
-    """
+def calculate_standings(db: Session, tournament_id: int) -> List[schemas.StandingsEntry]:
     tour = db.query(Tournament).filter(Tournament.id == tournament_id).first()
     if not tour:
         return []
 
-    # Reset all team scores
     team_dict = {team.id: team for team in tour.teams}
     for team in team_dict.values():
         team.match_points = 0.0
@@ -99,6 +93,8 @@ def calculate_standings(db: Session, tournament_id: int) -> List[dict]:
         team.sonneborn_berger = 0.0
     db.commit()
 
+    # First pass: calculate match_points and game_points
+    match_results = []
     for m in tour.matches:
         if not m.is_completed:
             continue
@@ -113,29 +109,43 @@ def calculate_standings(db: Session, tournament_id: int) -> List[dict]:
 
         if m.result == "white_win":
             white_team.match_points += 2
-            black_team.match_points += 0
-            white_team.sonneborn_berger += m.white_score + m.black_score
+            result = "white_win"
         elif m.result == "black_win":
             black_team.match_points += 2
-            white_team.match_points += 0
-            black_team.sonneborn_berger += m.white_score + m.black_score
+            result = "black_win"
         elif m.result == "draw":
             white_team.match_points += 1
             black_team.match_points += 1
-            white_team.sonneborn_berger += black_team.match_points
-            black_team.sonneborn_berger += white_team.match_points
+            result = "draw"
+        else:
+            continue
+
+        match_results.append((white_team.id, black_team.id, result))
+
+    # Second pass: calculate Sonneborn-Berger
+    for white_id, black_id, result in match_results:
+        white = team_dict[white_id]
+        black = team_dict[black_id]
+
+        if result == "white_win":
+            white.sonneborn_berger += black.match_points
+        elif result == "black_win":
+            black.sonneborn_berger += white.match_points
+        elif result == "draw":
+            white.sonneborn_berger += black.match_points / 2
+            black.sonneborn_berger += white.match_points / 2
 
     db.commit()
 
     return [
-        {
-            "team_id": t.id,
-            "team_name": t.name,
-            "match_points": t.match_points,
-            "game_points": t.game_points,
-            "sonneborn_berger": t.sonneborn_berger,
-        }
-        for t in sorted(team_dict.values(), key=lambda x: (-x.match_points, -x.game_points))
+        schemas.StandingsEntry(
+            team_id=team.id,
+            team_name=team.name,
+            match_points=team.match_points,
+            game_points=team.game_points,
+            sonneborn_berger=round(team.sonneborn_berger, 2),
+        )
+        for team in sorted(team_dict.values(), key=lambda t: (-t.match_points, -t.game_points, -t.sonneborn_berger))
     ]
 
 

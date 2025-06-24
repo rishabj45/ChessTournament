@@ -1,9 +1,9 @@
 ### backend/app/api/matches.py
 from fastapi import APIRouter, Depends, HTTPException
-from soupsieve import match
 from sqlalchemy.orm import Session
 from typing import List
-
+from ..schemas import GameSimpleResultUpdate
+from ..models import Game, Match 
 from ..database import get_db
 from ..schemas import MatchResponse , GameSimpleResultUpdate
 from ..auth_utils import get_current_user
@@ -15,9 +15,6 @@ router = APIRouter(prefix="/api/matches", tags=["matches"])
 def get_matches(round_id: int, db: Session = Depends(get_db)):
     """Get all matches for a round."""
     return crud.get_matches(db, round_id=round_id)
-
-from ..schemas import GameSimpleResultUpdate
-from ..models import Game, Match , Team
 
 @router.post("/{match_id}/board/{board_number}/result")
 def submit_board_result(
@@ -46,8 +43,6 @@ def submit_board_result(
         game.white_score = 0.5
         game.black_score = 0.5
     game.result = update.result
-    crud.update_player_stats(db, game.white_player_id, game.white_score)
-    crud.update_player_stats(db, game.black_player_id, game.black_score)
     game.is_completed = True
     db.commit()
 
@@ -67,6 +62,5 @@ def submit_board_result(
 
         match.is_completed = True
         db.commit()
-        crud.calculate_standings(db, match.tournament_id)
 
     return {"message": f"Game result '{update.result}' submitted successfully"}

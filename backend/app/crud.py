@@ -1,10 +1,11 @@
 ### backend/app/crud.py
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, and_
+from sqlalchemy import and_
 from typing import List, Optional
 from fastapi import HTTPException
 from . import models, schemas
-from .tournament_logic import create_tournament_structure, calculate_standings
+from .tournament_logic import create_tournament_structure
+from collections import defaultdict
 
 # -- Tournament CRUD --
 def get_tournament(db: Session, tournament_id: int) -> Optional[models.Tournament]:
@@ -174,8 +175,6 @@ def update_match_result(db: Session, match_id: int, game_results: List[dict]) ->
         else:
             white_score += game.black_score
             black_score += game.white_score
-        update_player_stats(db, game.white_player_id, game.white_score)
-        update_player_stats(db, game.black_player_id, game.black_score)
 
     match.white_score = white_score
     match.black_score = black_score
@@ -189,7 +188,6 @@ def update_match_result(db: Session, match_id: int, game_results: List[dict]) ->
         match.result = "draw"
 
     db.commit()
-    calculate_standings(db, match.tournament_id)
 
     # Check round completion
     round_matches = db.query(models.Match).filter(models.Match.round_id == match.round_id).all()
@@ -220,30 +218,51 @@ def update_player_stats(db: Session, player_id: int, score: float):
     else:
         player.losses += 1
 
-def get_best_players(db: Session, tournament_id: int) -> List[dict]:
-    tour = get_tournament(db, tournament_id)
+def get_best_players(db: Session, tournament_id: int):
+    tour = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
     if not tour:
         return []
-    stats = []
-    for team in tour.teams:
-        for p in team.players:
-            total = p.wins + p.draws + p.losses
-            win_pct = (p.points / total * 100) if total else 0
-            perf = p.rating + int((p.points / total - 0.5) * 400) if total else p.rating
-            stats.append({
-                "player_id": p.id,
-                "player_name": p.name,
-                "team_id": team.id,
-                "rating": p.rating,
-                "games_played": total,
-                "wins": p.wins,
-                "draws": p.draws,
-                "losses": p.losses,
-                "points": p.points,
-                "win_percentage": win_pct,
-                "performance_rating": perf
-            })
-    stats.sort(key=lambda x: (-x["wins"], -x["win_percentage"], -x["rating"]))
-    for idx, row in enumerate(stats, start=1):
-        row["position"] = idx
-    return stats
+
+    stats = defaultdict(lambda: {
+        "player_id": None,
+        "player_name": "",
+        "wins": 0,
+        "draws": 0,
+        "losses": 0,
+        "points": 0.0,
+        "games_played": 0,
+    })
+
+    for match in tour.matches:
+        for game in match.games:
+            if not game.is_completed:
+                continue
+
+            # White player
+            white = stats[game.white_player_id]
+            white["player_id"] = game.white_player_id
+            white["player_name"] = game.white_player.name  # assumes relationship exists
+            white["games_played"] += 1
+            white["points"] += game.white_score
+            if game.white_score == 1.0:
+                white["wins"] += 1
+            elif game.white_score == 0.5:
+                white["draws"] += 1
+            else:
+                white["losses"] += 1
+
+            # Black player
+            black = stats[game.black_player_id]
+            black["player_id"] = game.black_player_id
+            black["player_name"] = game.black_player.name
+            black["games_played"] += 1
+            black["points"] += game.black_score
+            if game.black_score == 1.0:
+                black["wins"] += 1
+            elif game.black_score == 0.5:
+                black["draws"] += 1
+            else:
+                black["losses"] += 1
+
+    return sorted(stats.values(), key=lambda p: (-p["points"], -p["wins"]))
+
