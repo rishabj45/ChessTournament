@@ -90,6 +90,8 @@ def submit_game(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
+# backend/app/api/matches.py
+
 @router.get("/tournament/{tournament_id}/schedule")
 def tournament_schedule(
     tournament_id: int,
@@ -98,7 +100,48 @@ def tournament_schedule(
 ):
     """Get schedule for a tournament."""
     matches = crud.get_tournament_matches(db, tournament_id, round_number)
-    return {"tournament": tournament_id, "schedule": matches}
+    schedule = []
+    for match in matches:
+        games_data = []
+        for game in match.games:
+            # Map internal result to frontend format
+            res = game.result
+            if res == 'white_win':
+                res = '1-0'
+            elif res == 'black_win':
+                res = '0-1'
+            elif res == 'draw':
+                res = '1/2-1/2'
+            else:
+                # Treat 'pending' or None as no result
+                res = None
+
+            games_data.append({
+                "id": game.id,
+                "board_number": game.board_number,
+                "white_player_id": game.white_player_id,
+                "white_player_name": game.white_player.name if game.white_player else None,
+                "black_player_id": game.black_player_id,
+                "black_player_name": game.black_player.name if game.black_player else None,
+                "white_team_name": match.white_team.name if match.white_team else None,
+                "black_team_name": match.black_team.name if match.black_team else None,
+                "result": res
+            })
+
+        schedule.append({
+            "id": match.id,
+            "round_number": match.round_number,
+            "white_team_id": match.white_team_id,
+            "white_team_name": match.white_team.name if match.white_team else None,
+            "black_team_id": match.black_team_id,
+            "black_team_name": match.black_team.name if match.black_team else None,
+            "white_team_score": match.white_score,
+            "black_team_score": match.black_score,
+            "scheduled_date": match.scheduled_date.isoformat() if match.scheduled_date else None,
+            "status": "Completed" if match.is_completed else "Not Started",
+            "games": games_data
+        })
+    return {"tournament": tournament_id, "schedule": schedule}
 
 @router.get("/tournament/{tournament_id}/results")
 def tournament_results(

@@ -41,32 +41,34 @@ const Schedule: React.FC<ScheduleProps> = ({ isAdmin }) => {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedRound, setSelectedRound] = useState<number | 'all'>('all');
 
-  useEffect(() => {
-    fetchMatches();
-  }, []);
+  // frontend/src/components/Schedule.tsx (excerpt)
 
-  const fetchMatches = async () => {
-    try {
-      setLoading(true);
-      const current = await apiService.getCurrentTournament();
+useEffect(() => {
+  fetchMatches();
+}, []);
 
-      // ✅ Defensive check for null tournament
-      if (!current || !current.id) {
-        throw new Error('No active tournament found.');
-      }
-
-      const response = await fetch(`/api/matches/tournament/${current.id}/schedule`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch matches');
-      }
-      const data = await response.json();
-      setMatches(data.schedule); // ⬅️ your manual mapping logic retained
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+const fetchMatches = async () => {
+  try {
+    setLoading(true);
+    const current = await apiService.getCurrentTournament();
+    if (!current || !current.id) {
+      throw new Error('No active tournament found.');
     }
-  };
+
+    const response = await fetch(`/api/matches/tournament/${current.id}/schedule`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch matches');
+    }
+    const data = await response.json();
+    // data.schedule now contains the array of matches with team and player names
+    setMatches(data.schedule);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'An error occurred');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleSaveMatchResult = async (
     matchId: number,
@@ -307,4 +309,4 @@ const getMatchStatus = (match: Match) => {
   );
 };
 
-export default Schedule;
+export default Schedule; 
