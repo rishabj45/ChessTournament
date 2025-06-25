@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { apiService } from '@/services/api';
-import { MatchResponse, Player, Team, Tournament } from '@/types';
+import { MatchResponse, Player, Team, Tournament, GameResponse } from '@/types';
 import MatchResult from './MatchResult';
+import PlayerSwapModal from './PlayerSwapModal';
 
 interface ScheduleProps {
   isAdmin: boolean;
@@ -14,6 +15,10 @@ const Schedule: React.FC<ScheduleProps> = ({ isAdmin, tournament, onUpdate }) =>
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<MatchResponse | null>(null);
+  const [selectedGameForSwap, setSelectedGameForSwap] = useState<{
+    match: MatchResponse;
+    game: GameResponse;
+  } | null>(null);
   const [expandedMatches, setExpandedMatches] = useState<Record<number, boolean>>({});
   const [roundTimes, setRoundTimes] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
@@ -79,6 +84,11 @@ const Schedule: React.FC<ScheduleProps> = ({ isAdmin, tournament, onUpdate }) =>
       result === 'draw' ? [0.5, 0.5] : [0, 0];
 
     return `${score[0]}–${score[1]}` ;
+  };
+
+  const handleSwapComplete = () => {
+    // Refresh the data after a successful swap
+    onUpdate();
   };
 
   if (loading) return <div>Loading schedule...</div>;
@@ -155,7 +165,7 @@ const Schedule: React.FC<ScheduleProps> = ({ isAdmin, tournament, onUpdate }) =>
                         const rightIcon = board === 1 || board === 3 ? '♚' : '♔';
 
                         return (
-                          <div key={game.id} className="flex items-center justify-between">
+                          <div key={game.id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
                             <div className="flex gap-2 items-center w-1/2">
                               <span>{leftIcon}</span>
                               <span>{whitePlayer?.name || 'Unknown'}</span>
@@ -167,20 +177,36 @@ const Schedule: React.FC<ScheduleProps> = ({ isAdmin, tournament, onUpdate }) =>
                               <span>{blackPlayer?.name || 'Unknown'}</span>
                               <span>{rightIcon}</span>
                             </div>
+                            
+                            {/* Admin controls for each game */}
+                            {isAdmin && !match.is_completed && (
+                              <div className="flex gap-1 ml-2">
+                                <button
+                                  className="text-xs px-2 py-1 bg-orange-500 text-white rounded hover:bg-orange-600"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedGameForSwap({ match, game });
+                                  }}
+                                  title="Swap players for this board"
+                                >
+                                  Swap
+                                </button>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
 
                       {isAdmin && (
-                        <div className="flex justify-end mt-2">
+                        <div className="flex justify-end mt-2 gap-2">
                           <button
-                            className="text-sm px-3 py-1 bg-blue-600 text-white rounded"
+                            className="text-sm px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedMatch(match);
                             }}
                           >
-                            Enter Result
+                            Enter Results
                           </button>
                         </div>
                       )}
@@ -193,14 +219,28 @@ const Schedule: React.FC<ScheduleProps> = ({ isAdmin, tournament, onUpdate }) =>
         );
       })}
 
+      {/* Match Result Modal */}
       {selectedMatch && (
         <MatchResult
           match={selectedMatch}
-          players= {players}
+          players={players}
           onClose={() => {
             setSelectedMatch(null);
             onUpdate();
           }}
+        />
+      )}
+
+      {/* Player Swap Modal */}
+      {selectedGameForSwap && (
+        <PlayerSwapModal
+          match={selectedGameForSwap.match}
+          game={selectedGameForSwap.game}
+          isOpen={!!selectedGameForSwap}
+          onClose={() => setSelectedGameForSwap(null)}
+          onSwapComplete={handleSwapComplete}
+          players={players}
+          teams={teams}
         />
       )}
     </div>

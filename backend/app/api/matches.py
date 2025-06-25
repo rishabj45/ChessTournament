@@ -3,9 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from ..schemas import GameSimpleResultUpdate
-from ..models import Game, Match , Round
+from ..models import Game, Match , Round , Player
 from ..database import get_db
-from ..schemas import MatchResponse , GameSimpleResultUpdate , MatchRescheduleRequest
+from ..schemas import MatchResponse , GameSimpleResultUpdate , MatchRescheduleRequest ,SwapPlayersRequest
 from ..auth_utils import get_current_user
 from .. import crud
 
@@ -91,3 +91,73 @@ def reschedule_round(
         m.scheduled_date = req.scheduled_date
     db.commit()
     return {"message": "Rescheduled"}
+
+# Backend API endpoints needed
+
+
+@router.get("/{match_id}/available-swaps")
+def get_available_swaps(
+    match_id: int,
+    db: Session = Depends(get_db),
+    _: dict = Depends(get_current_user)
+):
+    match = db.query(Match).filter(Match.id == match_id).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+
+    white_team_players = db.query(Player).filter(Player.team_id == match.white_team_id).order_by(Player.position).all()
+    black_team_players = db.query(Player).filter(Player.team_id == match.black_team_id).order_by(Player.position).all()
+
+    # Current assignments per board
+    current_assignments = []
+    for game in match.games:
+        current_assignments.append({
+            "game_id": game.id,
+            "board_number": game.board_number,
+            "white_player_id": game.white_player_id,
+            "black_player_id": game.black_player_id
+        })
+
+    return {
+        "white_team_players": [
+            {"id": p.id, "name": p.name, "position": p.position} for p in white_team_players
+        ],
+        "black_team_players": [
+            {"id": p.id, "name": p.name, "position": p.position} for p in black_team_players
+        ],
+        "current_assignments": current_assignments
+    }
+
+@router.post("/{match_id}/games/{game_id}/swap-players")
+def swap_players(
+    match_id: int,
+    game_id: int,
+    swap_data: SwapPlayersRequest,
+    db: Session = Depends(get_db),
+    _: dict = Depends(get_current_user)
+):
+    game = db.query(Game).filter(Game.id == game_id, Game.match_id == match_id).first()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    if game.is_completed:
+        raise HTTPException(status_code=400, detail="Cannot swap players after result is submitted.")
+
+    match = db.query(Match).filter(Match.id == match_id).first()
+    if not match or match.is_completed:
+        raise HTTPException(status_code=400, detail="Match not found or already completed")
+
+    if swap_data.new_white_player_id:
+        player = db.query(Player).filter(Player.id == swap_data.new_white_player_id).first()
+        if not player or player.team_id != match.white_team_id:
+            raise HTTPException(status_code=400, detail="Invalid white player for this match")
+        game.white_player_id = player.id
+
+    if swap_data.new_black_player_id:
+        player = db.query(Player).filter(Player.id == swap_data.new_black_player_id).first()
+        if not player or player.team_id != match.black_team_id:
+            raise HTTPException(status_code=400, detail="Invalid black player for this match")
+        game.black_player_id = player.id
+
+
+    db.commit()
+    return {"message": "Players swapped successfully"}

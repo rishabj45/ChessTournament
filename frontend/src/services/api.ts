@@ -2,7 +2,7 @@
 import axios, { AxiosInstance } from 'axios';
 import {
   Tournament, Team, Player, MatchResponse, StandingsResponse, BestPlayersResponse,
-  LoginRequest, AuthResponse , PlayerCreate, PlayerUpdate
+  LoginRequest, AuthResponse , PlayerCreate, PlayerUpdate , SwapPlayersRequest, AvailableSwapsResponse
 } from '@/types';
 
 class ApiService {
@@ -109,6 +109,26 @@ async submitBoardResult(
     const res = await this.client.get(`/tournaments/${tournament.id}/best-players`);
     return res.data;
   }
+
+  async getAvailableSwaps(matchId: number): Promise<AvailableSwapsResponse> {
+  const res = await this.client.get(`/matches/${matchId}/available-swaps`);
+  return res.data;
+}
+
+// Swap players in a specific game
+async swapGamePlayers(
+  matchId: number, 
+  gameId: number, 
+  swapData: SwapPlayersRequest
+): Promise<void> {
+  await this.client.post(`/matches/${matchId}/games/${gameId}/swap-players`, swapData);
+}
+
+// Get swap history for a match (optional)
+async getSwapHistory(matchId: number): Promise<any[]> {
+  const res = await this.client.get(`/matches/${matchId}/swap-history`);
+  return res.data;
+}
 }
 
 export const apiService = new ApiService();

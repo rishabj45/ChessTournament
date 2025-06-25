@@ -1,25 +1,3 @@
-PROMPT GIVEN 
-
-i am beginner working on chesstournament project i will attach zip file of what i had completed if u need any ideas from there; i was using sqlite but use what is bestlike sqlalchemy
-initialise the tournament with n teams and 4 players in each team;generates round robin schedule 
-the site should be read only for viewers and admin can add information. at top of site tournament name , below it 4 tabs- schedule&results,standings,teams,best player;default schedule page is open
-it should also allow admin to login but viewers dont need to login;when admin is logged in it should show a toggle for admin mode which can be turned on off to be in viewer mode and admin mode,can only use admin powers in admin mode
-teams tab shows teams and players with their ratings; admin can add upto 2 more players ; change team names player names player ratings; remove player but no . of players cant go below 4 and canot excceed 6 
-schedule&results contain date and time of matches and  show result,each match is a 4v4 ;it also shows which player plays against whom on each board ; top4 players by default;if any players is swapped there place in order is decided bt their order in team 
-admin can submit results in each board 
-standings contain teams rank based on points and tiebraker points also like used in fide tournaments
-best player which has all the players ranked based on no. of wins
-
-additional features that we can add later:
-assign black and white to teams in each match ; team white gets while in board1,3 black gets white in board 2,4
-in case of odd no of rounds i am unsure how to be fair so every team gets white equal times
-
-Tech Stack
-best architecture for everything
-generate complete project structure and code for each files in one go
-also tell me how to run the project 
-ask any queries you may have before generating any code
-
 # Chess Tournament Management System
 
 ## Project Structure
@@ -243,54 +221,7 @@ docker-compose up --build
    - Rating system sync
    - Live game streaming
 
-## Support
 
-For issues or questions:
-1. Check the API documentation at `http://localhost:8000/docs`
-2. Review the console logs for errors
-3. Ensure all dependencies are installed correctly
-4. Verify database connection settings
+ Check the API documentation at `http://localhost:8000/docs`
 
-BACKEND COMPLETED
-Here are all your main API endpoints as defined in your main.py and router registrations:
 
----
-
-## **Authentication**
-- `POST /api/auth/login` — Admin login
-- `POST /api/auth/verify` — Verify JWT token
-- `POST /api/auth/logout` — Admin logout
-
-## **Tournaments**
-- `GET /api/tournaments` — List all tournaments
-- `GET /api/tournaments/current` — Get current tournament
-- `POST /api/tournaments` — Create a tournament (Admin)
-- `PUT /api/tournaments/{id}` — Update a tournament (Admin)
-
-## **Teams**
-- `GET /api/teams` — List all teams
-- `POST /api/teams` — Create a team (Admin)
-- `PUT /api/teams/{id}` — Update a team (Admin)
-- `DELETE /api/teams/{id}` — Delete a team (Admin)
-
-## **Players**
-- `GET /api/players` — List all players
-- `GET /api/players/rankings` — Get player rankings
-- `POST /api/players` — Create a player (Admin)
-- `PUT /api/players/{id}` — Update a player (Admin)
-- `DELETE /api/players/{id}` — Delete a player (Admin)
-
-## **Matches**
-- `GET /api/matches` — List all matches
-- `GET /api/matches/schedule` — Get match schedule
-- `PUT /api/matches/{id}/result` — Update match result (Admin)
-
-## **Health & Info**
-- `GET /health` — Basic health check
-- `GET /health/detailed` — Detailed health check (includes DB)
-- `GET /` — API root info
-- `GET /api` — API info and available endpoints
-
----
-
-If you need the request/response schemas or more details for any endpoint, let me know!

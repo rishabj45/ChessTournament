@@ -158,3 +158,8 @@ class BestPlayersResponse(BaseModel):
 
 class MatchRescheduleRequest(BaseModel):
     scheduled_date: datetime
+
+class SwapPlayersRequest(BaseModel):
+    new_white_player_id: Optional[int] = None
+    new_black_player_id: Optional[int] = None
+    reason: Optional[str] = None  # For audit trail

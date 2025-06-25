@@ -139,3 +139,31 @@ export interface AuthResponse {
 export interface UseApiOptions {
   onSuccess?: () => void;
 }
+
+// Add these interfaces to your existing frontend/src/types/index.ts file
+
+export interface SwapPlayersRequest {
+  new_white_player_id?: number;
+  new_black_player_id?: number;
+  reason?: string;
+}
+
+export interface AvailableSwapsResponse {
+  white_team_players: Player[];
+  black_team_players: Player[];
+  current_assignments: Record<number, number>;
+}
+
+export interface SwapHistoryEntry {
+  id: number;
+  match_id: number;
+  game_id: number;
+  board_number: number;
+  old_white_player_id?: number;
+  new_white_player_id?: number;
+  old_black_player_id?: number;
+  new_black_player_id?: number;
+  reason?: string;
+  swapped_by: string;
+  swapped_at: string;
+}
