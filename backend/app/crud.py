@@ -218,51 +218,56 @@ def update_player_stats(db: Session, player_id: int, score: float):
     else:
         player.losses += 1
 
-def get_best_players(db: Session, tournament_id: int):
+def get_best_players(db: Session, tournament_id: int) -> list[schemas.BestPlayerEntry]:
     tour = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
     if not tour:
         return []
 
-    stats = defaultdict(lambda: {
-        "player_id": None,
-        "player_name": "",
-        "wins": 0,
-        "draws": 0,
-        "losses": 0,
-        "points": 0.0,
-        "games_played": 0,
-    })
+    # 🟢 Initialize schema objects directly
+    player_map: dict[int, schemas.BestPlayerEntry] = {}
 
+    for team in tour.teams:
+        for player in team.players:
+            player_map[player.id] = schemas.BestPlayerEntry(
+                player_id=player.id,
+                player_name=player.name,
+                games_played=0,
+                wins=0,
+                draws=0,
+                losses=0,
+                points=0.0
+            )
+
+    # 🟡 Update stats directly on schema objects
     for match in tour.matches:
         for game in match.games:
             if not game.is_completed:
                 continue
 
-            # White player
-            white = stats[game.white_player_id]
-            white["player_id"] = game.white_player_id
-            white["player_name"] = game.white_player.name  # assumes relationship exists
-            white["games_played"] += 1
-            white["points"] += game.white_score
-            if game.white_score == 1.0:
-                white["wins"] += 1
-            elif game.white_score == 0.5:
-                white["draws"] += 1
-            else:
-                white["losses"] += 1
+            white = player_map[game.white_player_id]
+            black = player_map[game.black_player_id]
 
-            # Black player
-            black = stats[game.black_player_id]
-            black["player_id"] = game.black_player_id
-            black["player_name"] = game.black_player.name
-            black["games_played"] += 1
-            black["points"] += game.black_score
-            if game.black_score == 1.0:
-                black["wins"] += 1
-            elif game.black_score == 0.5:
-                black["draws"] += 1
-            else:
-                black["losses"] += 1
+            white.games_played += 1
+            black.games_played += 1
 
-    return sorted(stats.values(), key=lambda p: (-p["points"], -p["wins"]))
+            white.points += game.white_score
+            black.points += game.black_score
+
+            def update_result(score: float, player: schemas.BestPlayerEntry):
+                if score == 1.0:
+                    player.wins += 1
+                elif score == 0.5:
+                    player.draws += 1
+                else:
+                    player.losses += 1
+
+            update_result(game.white_score, white)
+            update_result(game.black_score, black)
+
+    # 🔵 Return only players who actually played
+    return sorted(
+        [p for p in player_map.values() ],
+        key=lambda p: (-p.points, -p.wins)
+    )
+
 

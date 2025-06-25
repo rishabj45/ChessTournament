@@ -1,7 +1,7 @@
-// frontend/src/components/TeamEditor.tsx
 import React, { useState, useEffect } from 'react';
 import { Save, X, Plus, Trash2 } from 'lucide-react';
 import { Player, Team } from '@/types';
+import { apiService } from '@/services/api';
 
 interface TeamEditorProps {
   team: Team;
@@ -14,42 +14,73 @@ interface TeamEditorProps {
 const TeamEditor: React.FC<TeamEditorProps> = ({ team, isOpen, onClose, onSave, isAdmin }) => {
   const [name, setName] = useState(team.name);
   const [players, setPlayers] = useState<Player[]>(team.players || []);
+  const [originalPlayers, setOriginalPlayers] = useState<Player[]>(team.players || []);
   const [newPlayerName, setNewPlayerName] = useState('');
+  const [newPlayerRating, setNewPlayerRating] = useState<number | ''>('');
 
   useEffect(() => {
     setName(team.name);
     setPlayers(team.players || []);
+    setOriginalPlayers(team.players || []);
   }, [team]);
 
-  const addPlayer = () => {
+  const addPlayer = async () => {
     if (!newPlayerName.trim()) return;
 
-    const newPlayer: Player = {
-      id: 0,
-      name: newPlayerName.trim(),
-      rating: 1200,
-      team_id: team.id,
-    };
-
-    setPlayers(prev => [...prev, newPlayer]);
-    setNewPlayerName('');
+    try {
+      const created = await apiService.addPlayer({
+        name: newPlayerName.trim(),
+        team_id: team.id,
+        position: players.length + 1,
+        rating: typeof newPlayerRating === 'number' ? newPlayerRating : undefined,
+      });
+      setPlayers(prev => [...prev, created]);
+      setNewPlayerName('');
+      setNewPlayerRating('');
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to add player.');
+    }
   };
 
-  const removePlayer = (idx: number) => {
-    setPlayers(prev => prev.filter((_, i) => i !== idx));
+  const removePlayer = async (idx: number) => {
+    const player = players[idx];
+    if (!player.id) return;
+
+    if (!confirm(`Delete player ${player.name}?`)) return;
+
+    try {
+      await apiService.deletePlayer(player.id);
+      setPlayers(prev => prev.filter((_, i) => i !== idx));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to delete player.');
+    }
   };
 
-  const save = () => {
-    const updatedTeam: Team = {
-      ...team,
-      name: name.trim(),
-      players,
-    };
+  const save = async () => {
+    try {
+      const updates = players.map((p, i) => {
+        const original = originalPlayers.find(op => op.id === p.id);
+        if (p.name.trim() && original && p.name !== original.name) {
+          return apiService.updatePlayer(p.id, { name: p.name });
+        }
+        return null;
+      }).filter(Boolean);
 
-    onSave(updatedTeam);
+      await Promise.all(updates);
+
+      const updatedTeam: Team = {
+        ...team,
+        name: name.trim(),
+        players,
+      };
+
+      onSave(updatedTeam);
+    } catch (err) {
+      alert('Failed to save changes.');
+    }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !isAdmin) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -72,9 +103,9 @@ const TeamEditor: React.FC<TeamEditorProps> = ({ team, isOpen, onClose, onSave, 
           <label className="block mb-1 font-medium">Players:</label>
           <ul className="mb-2 space-y-2">
             {players.map((p, idx) => (
-              <li key={idx} className="flex items-center">
+              <li key={p.id ?? idx} className="flex items-center space-x-2">
                 <input
-                  className="flex-1 border px-3 py-1 rounded mr-2"
+                  className="flex-1 border px-3 py-1 rounded"
                   value={p.name}
                   onChange={e => {
                     const updated = [...players];
@@ -82,6 +113,9 @@ const TeamEditor: React.FC<TeamEditorProps> = ({ team, isOpen, onClose, onSave, 
                     setPlayers(updated);
                   }}
                 />
+                <span className="text-sm text-gray-500 w-12 text-right">
+                  {p.rating ?? '—'}
+                </span>
                 <button onClick={() => removePlayer(idx)} className="text-red-600">
                   <Trash2 />
                 </button>
@@ -89,12 +123,22 @@ const TeamEditor: React.FC<TeamEditorProps> = ({ team, isOpen, onClose, onSave, 
             ))}
           </ul>
 
-          <div className="flex items-center mt-2">
+          <div className="flex items-center mt-2 space-x-2">
             <input
-              className="flex-1 border px-3 py-1 rounded mr-2"
+              className="flex-1 border px-3 py-1 rounded"
               placeholder="New player name"
               value={newPlayerName}
               onChange={e => setNewPlayerName(e.target.value)}
+            />
+            <input
+              type="number"
+              className="w-20 border px-2 py-1 rounded"
+              placeholder="Rating"
+              value={newPlayerRating}
+              onChange={e =>
+                setNewPlayerRating(e.target.value === '' ? '' : parseInt(e.target.value))
+              }
+              min={0}
             />
             <button
               className="px-2 py-1 bg-green-500 text-white rounded"

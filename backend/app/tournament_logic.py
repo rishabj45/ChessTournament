@@ -91,6 +91,9 @@ def calculate_standings(db: Session, tournament_id: int) -> List[schemas.Standin
         team.match_points = 0.0
         team.game_points = 0.0
         team.sonneborn_berger = 0.0
+        team.wins = 0
+        team.draws = 0
+        team.losses = 0
     db.commit()
 
     # First pass: calculate match_points and game_points
@@ -110,17 +113,25 @@ def calculate_standings(db: Session, tournament_id: int) -> List[schemas.Standin
         if m.result == "white_win":
             white_team.match_points += 2
             result = "white_win"
+            white_team.wins += 1
+            black_team.losses += 1
         elif m.result == "black_win":
             black_team.match_points += 2
             result = "black_win"
+            black_team.wins += 1
+            white_team.losses += 1
         elif m.result == "draw":
             white_team.match_points += 1
             black_team.match_points += 1
             result = "draw"
+            white_team.draws += 1
+            black_team.draws += 1
         else:
             continue
 
         match_results.append((white_team.id, black_team.id, result))
+    for team in team_dict.values():
+        team.matches_played = team.wins + team.draws + team.losses
 
     # Second pass: calculate Sonneborn-Berger
     for white_id, black_id, result in match_results:
@@ -141,6 +152,10 @@ def calculate_standings(db: Session, tournament_id: int) -> List[schemas.Standin
         schemas.StandingsEntry(
             team_id=team.id,
             team_name=team.name,
+            matches_played=team.matches_played,
+            wins=team.wins,
+            draws=team.draws,
+            losses=team.losses,
             match_points=team.match_points,
             game_points=team.game_points,
             sonneborn_berger=round(team.sonneborn_berger, 2),

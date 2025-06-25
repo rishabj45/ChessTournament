@@ -2,24 +2,27 @@
 import axios, { AxiosInstance } from 'axios';
 import {
   Tournament, Team, Player, MatchResponse, StandingsResponse, BestPlayersResponse,
-  LoginRequest, AuthResponse
+  LoginRequest, AuthResponse , PlayerCreate, PlayerUpdate
 } from '@/types';
 
 class ApiService {
   private client: AxiosInstance;
-  
+
   constructor() {
     this.client = axios.create({ baseURL: '/api' });
-    this.client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`; // ✅ attach token
-  }
-  return config;
-});
 
+    // Attach interceptor once here
+    this.client.interceptors.request.use(
+      config => {
+        const token = localStorage.getItem('token');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      error => Promise.reject(error)
+    );
   }
-  
   // -- Authentication --
   async login(data: LoginRequest): Promise<AuthResponse> {
     const res = await this.client.post('/auth/login', data);
@@ -58,6 +61,20 @@ class ApiService {
   async getPlayers(): Promise<Player[]> {
     const res = await this.client.get('/players');
     return res.data;
+  }
+  // api.ts
+  async addPlayer(player: PlayerCreate): Promise<Player> {
+    const res = await this.client.post('/players', player);
+    return res.data;
+  }
+
+  async updatePlayer(playerId: number, player: PlayerUpdate): Promise<Player> {
+    const res = await this.client.put(`/players/${playerId}`, player);
+    return res.data;
+  }
+
+  async deletePlayer(playerId: number): Promise<void> {
+    await this.client.delete(`/players/${playerId}`);
   }
 
   // -- Matches --

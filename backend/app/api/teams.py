@@ -36,9 +36,9 @@ def update_team(team_id: int, team_upd: TeamUpdate, db: Session = Depends(get_db
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Team not found")
     return updated
 
-@router.delete("/{team_id}")
-def delete_team(team_id: int, db: Session = Depends(get_db), admin_user: dict = Depends(get_current_user)):
-    success = crud.delete_team(db, team_id)
-    if not success:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Team not found")
-    return {"message": "Team deleted successfully"}
+# @router.delete("/{team_id}")
+# def delete_team(team_id: int, db: Session = Depends(get_db), admin_user: dict = Depends(get_current_user)):
+#     success = crud.delete_team(db, team_id)
+#     if not success:
+#         raise HTTPException(status.HTTP_404_NOT_FOUND, "Team not found")
+#     return {"message": "Team deleted successfully"}

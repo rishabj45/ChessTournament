@@ -55,11 +55,15 @@ class PlayerBase(BaseModel):
     team_id: int
     position: Optional[int]
 
-class PlayerCreate(PlayerBase):
-    pass
+class PlayerCreate(BaseModel):
+    name: str
+    team_id: int
+    rating: Optional[float] = None
+    position: Optional[int] 
 
 class PlayerUpdate(BaseModel):
     name: Optional[str]
+    rating: Optional[float] = None
     position: Optional[int]
 
 class PlayerResponse(PlayerBase):
@@ -125,6 +129,10 @@ class MatchResponse(BaseModel):
 class StandingsEntry(BaseModel):
     team_id: int
     team_name: str
+    matches_played: int
+    wins: int
+    draws: int
+    losses: int
     match_points: float
     game_points: float
     sonneborn_berger: float

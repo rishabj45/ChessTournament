@@ -52,6 +52,19 @@ export interface Player {
   losses?: number;
   points?: number;
 }
+// types.ts
+export interface PlayerCreate {
+  name: string;
+  team_id: number;
+  position?: number;
+  rating?: number;
+}
+
+export interface PlayerUpdate {
+  name?: string;
+  position?: number;
+  rating?: number;
+}
 
 export interface GameResponse {
   id: number;
@@ -83,7 +96,11 @@ export interface MatchResponse {
 
 export interface StandingsEntry {
   team_id: number;
-  team_name: string;
+  team_name: string; 
+  matches_played: number;
+  wins: number;
+  draws: number;
+  losses: number;
   match_points: number;
   game_points: number;
   sonneborn_berger: number;
