@@ -47,6 +47,7 @@ def decode_token(token: str) -> dict:
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
 ):
+    print(f"credentials received: {credentials}")  
     token = credentials.credentials
     try:
         payload = decode_token(token)

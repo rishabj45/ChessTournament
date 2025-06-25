@@ -41,7 +41,7 @@ export interface Team {
 }
 
 export interface Player {
-  id: number;
+  id?: number;
   name: string;
   team_id: number;
   position?: number;

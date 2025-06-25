@@ -64,7 +64,7 @@ class ApiService {
   }
   // api.ts
   async addPlayer(player: PlayerCreate): Promise<Player> {
-    const res = await this.client.post('/players', player);
+    const res = await this.client.post('/players/', player);
     return res.data;
   }
 
