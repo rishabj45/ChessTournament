@@ -146,65 +146,6 @@ def get_matches(db: Session, round_id: Optional[int] = None, tournament_id: Opti
         query = query.filter(models.Match.tournament_id == tournament_id)
     return query.all()
 
-
-def update_match_result(db: Session, match_id: int, game_results: List[dict]) -> dict:
-    match = get_match(db, match_id)
-    if not match:
-        raise HTTPException(status_code=404, detail="Match not found")
-    white_score = 0.0
-    black_score = 0.0
-
-    for res in game_results:
-        game = db.query(models.Game).filter(
-            models.Game.match_id == match_id,
-            models.Game.board_number == res["board_number"]
-        ).first()
-        if not game:
-            continue
-        game.result = res["result"]
-        game.is_completed = True
-        if res["result"] == "white_win":
-            game.white_score, game.black_score = 1.0, 0.0
-        elif res["result"] == "black_win":
-            game.white_score, game.black_score = 0.0, 1.0
-        else:
-            game.white_score = game.black_score = 0.5
-        if game.white_player.team_id == match.white_team_id:
-            white_score += game.white_score
-            black_score += game.black_score
-        else:
-            white_score += game.black_score
-            black_score += game.white_score
-
-    match.white_score = white_score
-    match.black_score = black_score
-    match.is_completed = True
-    match.completed_date = models.func.now()
-    if white_score > black_score:
-        match.result = "white_win"
-    elif black_score > white_score:
-        match.result = "black_win"
-    else:
-        match.result = "draw"
-
-    db.commit()
-
-    # Check round completion
-    round_matches = db.query(models.Match).filter(models.Match.round_id == match.round_id).all()
-    if all(m.is_completed for m in round_matches):
-        match.round.is_completed = True
-        db.commit()
-        completed = db.query(models.Round).filter(
-            models.Round.tournament_id == match.tournament_id,
-            models.Round.is_completed == True
-        ).count()
-        tournament = get_tournament(db, match.tournament_id)
-        if tournament:
-            tournament.current_round = completed + 1
-            db.commit()
-
-    return {"message": "Match result updated successfully"}
-
 def update_player_stats(db: Session, player_id: int, score: float):
     player = get_player(db, player_id)
     if not player:
@@ -269,5 +210,3 @@ def get_best_players(db: Session, tournament_id: int) -> list[schemas.BestPlayer
         [p for p in player_map.values() ],
         key=lambda p: (-p.points, -p.wins)
     )
-
-

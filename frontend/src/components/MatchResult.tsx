@@ -2,14 +2,15 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { apiService } from '@/services/api';
-import { MatchResponse } from '@/types';
+import { MatchResponse ,Player} from '@/types';
 
 interface MatchResultProps {
   match: MatchResponse;
+  players:Player[];
   onClose: () => void;
 }
 
-const MatchResult: React.FC<MatchResultProps> = ({ match, onClose }) => {
+const MatchResult: React.FC<MatchResultProps> = ({ match, onClose ,players }) => {
   
   const [results, setResults] = useState<{ board: number; result: string }[]>(
   match.games.map((g) => ({
@@ -31,6 +32,9 @@ const MatchResult: React.FC<MatchResultProps> = ({ match, onClose }) => {
     alert('Error submitting results');
   }
 };
+
+const getPlayerName = (id: number) =>
+  players.find((p) => p.id === id)?.name || `Player ${id}`;
 
 
 return (
@@ -59,12 +63,22 @@ return (
             }}
           >
             <option value="pending">Pending</option>
-            <option value="white_win">White Win</option>
-            <option value="black_win">Black Win</option>
+            <option value="white_win">{getPlayerName(game.white_player_id)} </option>
+            <option value="black_win">{getPlayerName(game.black_player_id)} </option>
             <option value="draw">Draw</option>
           </select>
           {game.result && (
-            <span className="text-xs text-green-600">(was: {game.result})</span>
+            <span className="text-xs text-green-600">
+              was:{" "}
+              {game.result === "white_win"
+                ? getPlayerName(game.white_player_id)
+                : game.result === "black_win"
+                ? getPlayerName(game.black_player_id)
+                : game.result === "draw"
+                ? "Draw"
+                : "Pending"}
+              
+            </span>
           )}
         </div>
       ))}

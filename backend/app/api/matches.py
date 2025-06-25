@@ -3,9 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from ..schemas import GameSimpleResultUpdate
-from ..models import Game, Match 
+from ..models import Game, Match , Round
 from ..database import get_db
-from ..schemas import MatchResponse , GameSimpleResultUpdate
+from ..schemas import MatchResponse , GameSimpleResultUpdate , MatchRescheduleRequest
 from ..auth_utils import get_current_user
 from .. import crud
 
@@ -50,9 +50,9 @@ def submit_board_result(
     match = db.query(Match).filter(Match.id == match_id).first()
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
+    match.white_score = sum(g.white_score for g in match.games)
+    match.black_score = sum(g.black_score for g in match.games)
     if all(g.is_completed for g in match.games):
-        match.white_score = sum(g.white_score for g in match.games)
-        match.black_score = sum(g.black_score for g in match.games)
         if match.white_score > match.black_score:
             match.result = "white_win"
         elif match.black_score > match.white_score:
@@ -61,6 +61,33 @@ def submit_board_result(
             match.result = "draw"
 
         match.is_completed = True
+    db.commit()
+    round_matches = db.query(Match).filter(Match.round_id == match.round_id).all()
+    if all(m.is_completed for m in round_matches):
+        match.round.is_completed = True
         db.commit()
+        completed = db.query(Round).filter(
+            Round.tournament_id == match.tournament_id,
+            Round.is_completed == True
+        ).count()
+        tournament = crud.get_tournament(db, match.tournament_id)
+        if tournament:
+            tournament.current_round = completed + 1
+            db.commit()
 
     return {"message": f"Game result '{update.result}' submitted successfully"}
+
+@router.post("/rounds/{round_number}/reschedule")
+def reschedule_round(
+    round_number: int,
+    req: MatchRescheduleRequest,
+    db: Session = Depends(get_db),
+    _: dict = Depends(get_current_user)
+):
+    matches = db.query(Match).filter(Match.round_number == round_number).all()
+    if not matches:
+        raise HTTPException(404, "No matches in round")
+    for m in matches:
+        m.scheduled_date = req.scheduled_date
+    db.commit()
+    return {"message": "Rescheduled"}

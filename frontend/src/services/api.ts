@@ -42,6 +42,12 @@ class ApiService {
     const res = await this.client.post('/tournaments', data);
     return res.data;
   }
+async rescheduleRound(roundNumber: number, datetime: string): Promise<void> {
+  await this.client.post(`/matches/rounds/${roundNumber}/reschedule`, {
+    scheduled_date: new Date(datetime).toISOString(),
+  });
+}
+
 
   // -- Teams --
   async getTeams(): Promise<Team[]> {

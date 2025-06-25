@@ -155,3 +155,6 @@ class BestPlayersResponse(BaseModel):
     tournament_id: int
     tournament_name: str
     players: List[BestPlayerEntry]
+
+class MatchRescheduleRequest(BaseModel):
+    scheduled_date: datetime
